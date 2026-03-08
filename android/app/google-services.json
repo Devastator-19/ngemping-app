@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "117593786021",
+    "project_id": "ngemping-app",
+    "storage_bucket": "ngemping-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:117593786021:android:3176eb18490b458e2fef4c",
+        "android_client_info": {
+          "package_name": "com.example.ngemping_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "117593786021-ql4t3kip66h0h53is69kq5egoh7bdqba.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.ngemping_app",
+            "certificate_hash": "bfd95b2dbe21f427c19e1b7c758240b2f1d7320a"
+          }
+        },
+        {
+          "client_id": "117593786021-0gnhec4l8h17i84cp6970i37hpu0kha9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCyhQ2lThfVWNmq1gk5fN9UuXd88nHpRR8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "117593786021-0gnhec4l8h17i84cp6970i37hpu0kha9.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "117593786021-aff74v89rt837avv4vjei1bf31pcu9sb.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.ngempingApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
