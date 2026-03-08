@@ -1,0 +1,43 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'core/theme/app_theme.dart';
+import 'features/auth/providers/auth_provider.dart';
+import 'features/community/providers/community_provider.dart';
+import 'features/onboarding/providers/onboarding_provider.dart';
+import 'features/splash/splash_screen.dart';
+import 'firebase_options.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+  runApp(const NngempingApp());
+}
+
+class NngempingApp extends StatelessWidget {
+  const NngempingApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppAuthProvider()),
+        ChangeNotifierProvider(create: (_) => OnboardingProvider()),
+        ChangeNotifierProvider(create: (_) => CommunityProvider()),
+      ],
+      child: MaterialApp(
+        title: 'ngemping',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        home: const SplashScreen(),
+      ),
+    );
+  }
+}
