@@ -26,6 +26,21 @@ class CommunityModel {
   bool get isJoined => membershipStatus == 'ACTIVE';
   bool get isPending => membershipStatus == 'PENDING';
 
+  CommunityModel copyWith({String? membershipStatus}) {
+    return CommunityModel(
+      id: id,
+      name: name,
+      slug: slug,
+      description: description,
+      logoUrl: logoUrl,
+      bannerUrl: bannerUrl,
+      location: location,
+      isPublic: isPublic,
+      memberCount: memberCount,
+      membershipStatus: membershipStatus ?? this.membershipStatus,
+    );
+  }
+
   factory CommunityModel.fromJson(Map<String, dynamic> json) {
     return CommunityModel(
       id: json['id'] as String,

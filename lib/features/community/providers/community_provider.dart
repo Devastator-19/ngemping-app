@@ -70,12 +70,16 @@ class CommunityProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<String?> joinCommunity(String communityId) async {
+  Future<String?> joinCommunity(String communityId,
+      {Map<String, dynamic>? formData}) async {
     _isJoining = true;
     notifyListeners();
 
     try {
-      final res = await ApiClient.instance.post('/communities/$communityId/join');
+      final res = await ApiClient.instance.post(
+        '/communities/$communityId/join',
+        data: formData,
+      );
       final status = res.data['data']['status'] as String;
 
       _communities = _communities.map((c) {

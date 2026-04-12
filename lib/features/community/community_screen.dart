@@ -7,6 +7,7 @@ import '../auth/providers/auth_provider.dart';
 import '../auth/login_screen.dart';
 import 'providers/community_provider.dart';
 import 'community_detail_screen.dart';
+import 'widgets/join_community_sheet.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -184,8 +185,13 @@ class _CommunityScreenState extends State<CommunityScreen>
       return;
     }
 
-    final msg =
-        await context.read<CommunityProvider>().joinCommunity(community.id);
+    final msg = await showModalBottomSheet<String?>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => JoinCommunitySheet(community: community),
+    );
+
     if (!mounted) return;
     if (msg != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -197,6 +203,7 @@ class _CommunityScreenState extends State<CommunityScreen>
         margin: const EdgeInsets.all(16),
       ));
       context.read<CommunityProvider>().fetchMyCommunities();
+      context.read<CommunityProvider>().fetchCommunities();
     }
   }
 
@@ -390,10 +397,11 @@ class _MyCommunitiesTab extends StatelessWidget {
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: _CommunityCard(
-              community: m.community,
+              community: m.community.copyWith(membershipStatus: m.status),
               isAuthenticated: true,
               role: m.role,
-              onLeave: () => onLeave(m.community),
+              canOpenDetail: m.status == 'ACTIVE',
+              onLeave: m.status == 'ACTIVE' ? () => onLeave(m.community) : null,
             ),
           );
         },
@@ -468,6 +476,7 @@ class _CommunityCard extends StatelessWidget {
   final CommunityModel community;
   final bool isAuthenticated;
   final String? role;
+  final bool canOpenDetail;
   final VoidCallback? onJoin;
   final VoidCallback? onLeave;
 
@@ -475,11 +484,13 @@ class _CommunityCard extends StatelessWidget {
     required this.community,
     required this.isAuthenticated,
     this.role,
+    this.canOpenDetail = true,
     this.onJoin,
     this.onLeave,
   });
 
   void _openDetail(BuildContext context) {
+    if (!canOpenDetail) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => CommunityDetailScreen(community: community),
