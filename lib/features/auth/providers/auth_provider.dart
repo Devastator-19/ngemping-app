@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/services/api_client.dart';
+import '../../../core/services/notification_service.dart';
 
 enum AuthStatus { initial, authenticated, unauthenticated }
 
@@ -63,13 +64,77 @@ class AppAuthProvider extends ChangeNotifier {
         return;
       }
     } catch (_) {}
-    // Fetch deletion status from backend
+    // Register FCM token ke backend
+    await NotificationService.instance.registerToken();
+    // Fetch user profile + deletion status from backend
     try {
       final res = await ApiClient.instance.get('/users/me');
-      final raw = res.data['data']['deletionRequestedAt'];
+      final data = res.data['data'] as Map<String, dynamic>;
+      final raw = data['deletionRequestedAt'];
       _deletionRequestedAt = raw != null ? DateTime.parse(raw as String) : null;
+      // Merge backend fields into user model
+      // Backend uses: address, province, district, gender (MALE/FEMALE/OTHER)
+      if (_user != null) {
+        _user = _user!.copyWith(
+          alamat: data['address'] as String?,
+          gender: data['gender'] as String?,
+          provinsi: data['province'] as String?,
+          district: data['district'] as String?,
+        );
+      }
       notifyListeners();
     } catch (_) {}
+  }
+
+  // ---------------------------------------------------------------------------
+  // Update profile (nama, alamat, gender, provinsi, district)
+  // ---------------------------------------------------------------------------
+
+  Future<bool> updateProfile({
+    String? displayName,
+    String? alamat,
+    String? gender,
+    String? provinsi,
+    String? district,
+  }) async {
+    try {
+      _setLoading(true);
+      _setError(null);
+
+      // Backend field names: address, province, district, gender (MALE/FEMALE/OTHER)
+      final body = <String, dynamic>{};
+      if (displayName != null) body['displayName'] = displayName;
+      if (alamat != null) body['address'] = alamat;
+      if (gender != null) body['gender'] = gender;
+      if (provinsi != null) body['province'] = provinsi;
+      if (district != null) body['district'] = district;
+
+      await ApiClient.instance.patch('/users/me', data: body);
+
+      // Update display name di Firebase juga jika berubah
+      if (displayName != null &&
+          displayName != _auth.currentUser?.displayName) {
+        await _auth.currentUser?.updateDisplayName(displayName);
+        await _auth.currentUser?.reload();
+      }
+
+      // Update local user model
+      _user = _user?.copyWith(
+        displayName: displayName,
+        alamat: alamat,
+        gender: gender,
+        provinsi: provinsi,
+        district: district,
+      );
+
+      _setLoading(false);
+      notifyListeners();
+      return true;
+    } catch (_) {
+      _setError('Gagal menyimpan profil. Coba lagi.');
+      _setLoading(false);
+      return false;
+    }
   }
 
   void _setLoading(bool val) {

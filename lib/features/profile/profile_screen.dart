@@ -5,6 +5,7 @@ import '../../core/theme/app_colors.dart';
 import '../auth/providers/auth_provider.dart';
 import '../auth/login_screen.dart';
 import '../auth/phone_auth_screen.dart';
+import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -120,6 +121,14 @@ class _AuthenticatedView extends StatelessWidget {
               ),
             ),
             actions: [
+              IconButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const EditProfileScreen()),
+                ),
+                icon: const Icon(Icons.edit_outlined, color: AppColors.primary),
+                tooltip: 'Edit Profil',
+              ),
               IconButton(
                 onPressed: () => _confirmSignOut(context),
                 icon: const Icon(Icons.logout_rounded, color: AppColors.error),
@@ -602,6 +611,34 @@ class _AccountInfoCard extends StatelessWidget {
                 icon: Icons.phone_outlined,
                 label: 'Nomor HP',
                 value: user.phoneNumber!),
+            const SizedBox(height: 10),
+          ],
+          if (user.gender != null) ...[
+            _InfoRow(
+                icon: Icons.wc_outlined,
+                label: 'Jenis Kelamin',
+                value: user.gender!),
+            const SizedBox(height: 10),
+          ],
+          if (user.provinsi != null) ...[
+            _InfoRow(
+                icon: Icons.map_outlined,
+                label: 'Provinsi',
+                value: user.provinsi!),
+            const SizedBox(height: 10),
+          ],
+          if (user.district != null) ...[
+            _InfoRow(
+                icon: Icons.location_city_outlined,
+                label: 'Kota / Kabupaten',
+                value: user.district!),
+            const SizedBox(height: 10),
+          ],
+          if (user.alamat != null) ...[
+            _InfoRow(
+                icon: Icons.home_outlined,
+                label: 'Alamat',
+                value: user.alamat!),
             const SizedBox(height: 10),
           ],
           _InfoRow(
