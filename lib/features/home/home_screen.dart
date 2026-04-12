@@ -3,10 +3,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/constants/app_strings.dart';
+import '../../core/models/community_model.dart';
 import '../auth/login_screen.dart';
 import '../auth/register_screen.dart';
 import '../auth/providers/auth_provider.dart';
 import '../community/community_screen.dart';
+import '../community/providers/community_provider.dart';
 import '../profile/profile_screen.dart';
 import 'widgets/membership_card.dart';
 
@@ -88,13 +90,24 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
   @override
+  void initState() {
+    super.initState();
+    // Fetch komunitas saat home pertama kali load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<CommunityProvider>().fetchCommunities();
+    });
+  }
+
+  void _goToTab(int index) => setState(() => _selectedIndex = index);
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          const _HomeBody(),
+          _HomeBody(onGoToCommunity: () => _goToTab(2)),
           const _PlaceholderTab(icon: Icons.event_rounded, label: 'Event'),
           CommunityScreen(),
           const ProfileScreen(),
@@ -102,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: _BottomNav(
         selectedIndex: _selectedIndex,
-        onTap: (i) => setState(() => _selectedIndex = i),
+        onTap: _goToTab,
       ),
     );
   }
@@ -172,7 +185,8 @@ class _BottomNav extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _HomeBody extends StatelessWidget {
-  const _HomeBody();
+  final VoidCallback onGoToCommunity;
+  const _HomeBody({required this.onGoToCommunity});
 
   @override
   Widget build(BuildContext context) {
@@ -238,16 +252,13 @@ class _HomeBody extends StatelessWidget {
               ),
               const SizedBox(height: 28),
 
-              // About community section
+              // Communities section
               _SectionHeader(
                 title: AppStrings.aboutCommunity,
-                onSeeAll: () {},
+                onSeeAll: onGoToCommunity,
               ),
               const SizedBox(height: 14),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: _CommunityCard(),
-              ),
+              _HomeCommunityList(onGoToCommunity: onGoToCommunity),
               const SizedBox(height: 20),
 
               // Join CTA — hanya tampil jika belum login
@@ -861,84 +872,212 @@ class _EventCard extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Community Card
+// Home Community List — horizontal scroll dari CommunityProvider
 // ---------------------------------------------------------------------------
 
-class _CommunityCard extends StatelessWidget {
+class _HomeCommunityList extends StatelessWidget {
+  final VoidCallback onGoToCommunity;
+  const _HomeCommunityList({required this.onGoToCommunity});
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<CommunityProvider>();
+
+    if (provider.isLoading && provider.communities.isEmpty) {
+      return const SizedBox(
+        height: 140,
+        child: Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppColors.primary,
+          ),
+        ),
+      );
+    }
+
+    if (provider.communities.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: GestureDetector(
+          onTap: onGoToCommunity,
+          child: Container(
+            height: 100,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.divider),
+            ),
+            child: Center(
+              child: Text(
+                'Belum ada komunitas. Lihat semua →',
+                style: GoogleFonts.nunito(
+                  fontSize: 13,
+                  color: AppColors.textLight,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 170,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: provider.communities.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (_, i) => _HomeCommunityCard(community: provider.communities[i]),
+      ),
+    );
+  }
+}
+
+class _HomeCommunityCard extends StatelessWidget {
+  final CommunityModel community;
+  const _HomeCommunityCard({required this.community});
+
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: 200,
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.divider),
       ),
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
+              // Logo / initials
               Container(
-                width: 48,
-                height: 48,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: AppColors.primarySurface,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.primaryPastel),
                 ),
-                child: const Icon(
-                  Icons.park_rounded,
-                  color: AppColors.primary,
-                  size: 26,
-                ),
+                clipBehavior: Clip.antiAlias,
+                child: community.logoUrl != null
+                    ? Image.network(
+                        community.logoUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            _CommunityInitials(name: community.name),
+                      )
+                    : _CommunityInitials(name: community.name),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      AppStrings.communityName,
+                      community.name,
                       style: GoogleFonts.comfortaa(
-                        fontSize: 14,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textDark,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      AppStrings.communityTagline,
-                      style: GoogleFonts.nunito(
-                        fontSize: 12,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
+                    if (community.location != null) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_outlined,
+                              size: 10, color: AppColors.textLight),
+                          const SizedBox(width: 2),
+                          Expanded(
+                            child: Text(
+                              community.location!,
+                              style: GoogleFonts.nunito(
+                                fontSize: 10,
+                                color: AppColors.textLight,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          Text(
-            AppStrings.communityDescription,
-            style: GoogleFonts.nunito(
-              fontSize: 13,
-              color: AppColors.textMedium,
-              height: 1.6,
+          if (community.description != null &&
+              community.description!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              community.description!,
+              style: GoogleFonts.nunito(
+                fontSize: 11,
+                color: AppColors.textMedium,
+                height: 1.4,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-          ),
-          const SizedBox(height: 14),
-          // Tags
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: const [
-              _Tag('Camping'),
-              _Tag('Hiking'),
-              _Tag('Trekking'),
-              _Tag('Family'),
-              _Tag('Alam Terbuka'),
+          ],
+          const Spacer(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.people_outline_rounded,
+                      size: 13, color: AppColors.textLight),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${community.memberCount} anggota',
+                    style: GoogleFonts.nunito(
+                      fontSize: 11,
+                      color: AppColors.textLight,
+                    ),
+                  ),
+                ],
+              ),
+              if (community.isJoined)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySurface,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Bergabung',
+                    style: GoogleFonts.nunito(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                )
+              else if (community.isPending)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.secondarySurface,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Pending',
+                    style: GoogleFonts.nunito(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.secondary,
+                    ),
+                  ),
+                ),
             ],
           ),
         ],
@@ -947,25 +1086,22 @@ class _CommunityCard extends StatelessWidget {
   }
 }
 
-class _Tag extends StatelessWidget {
-  final String label;
-  const _Tag(this.label);
+class _CommunityInitials extends StatelessWidget {
+  final String name;
+  const _CommunityInitials({required this.name});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.primarySurface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.primaryPastel),
-      ),
+    final initials = name.trim().isNotEmpty
+        ? name.trim().split(' ').take(2).map((w) => w[0]).join().toUpperCase()
+        : '?';
+    return Center(
       child: Text(
-        label,
-        style: GoogleFonts.nunito(
-          fontSize: 11,
+        initials,
+        style: GoogleFonts.comfortaa(
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
           color: AppColors.primary,
-          fontWeight: FontWeight.w700,
         ),
       ),
     );
