@@ -7,6 +7,7 @@ import '../auth/providers/auth_provider.dart';
 import 'providers/community_detail_provider.dart';
 import 'providers/community_provider.dart';
 import 'member_card_screen.dart';
+import 'widgets/join_community_sheet.dart';
 
 class CommunityDetailScreen extends StatelessWidget {
   final CommunityModel community;
@@ -376,11 +377,21 @@ class _JoinButton extends StatelessWidget {
   }
 
   Future<void> _join(BuildContext context) async {
-    final msg = await provider.joinCommunity();
+    final community = provider.community;
+    if (community == null) return;
+
+    final msg = await showModalBottomSheet<String?>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => JoinCommunitySheet(community: community),
+    );
+
     if (!context.mounted) return;
-    // Sync ke list komunitas utama
-    context.read<CommunityProvider>().fetchCommunities();
     if (msg != null) {
+      // Refresh detail + sync list
+      provider.fetchDetail();
+      context.read<CommunityProvider>().fetchCommunities();
       ScaffoldMessenger.of(context).showSnackBar(_snack(msg, true));
     }
   }
