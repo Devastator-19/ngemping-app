@@ -1,3 +1,23 @@
+class CustomQuestion {
+  final String id;
+  final String label;
+  final bool required;
+
+  const CustomQuestion({
+    required this.id,
+    required this.label,
+    required this.required,
+  });
+
+  factory CustomQuestion.fromJson(Map<String, dynamic> json) {
+    return CustomQuestion(
+      id: json['id'] as String,
+      label: json['label'] as String,
+      required: json['required'] as bool? ?? false,
+    );
+  }
+}
+
 class CommunityModel {
   final String id;
   final String name;
@@ -8,7 +28,9 @@ class CommunityModel {
   final String? location;
   final bool isPublic;
   final int memberCount;
-  final String? membershipStatus; // null = belum join
+  final String? membershipStatus;
+  final List<CustomQuestion> customQuestions;
+  final Map<String, dynamic>? cardConfig;
 
   const CommunityModel({
     required this.id,
@@ -21,12 +43,14 @@ class CommunityModel {
     required this.isPublic,
     required this.memberCount,
     this.membershipStatus,
+    this.customQuestions = const [],
+    this.cardConfig,
   });
 
   bool get isJoined => membershipStatus == 'ACTIVE';
   bool get isPending => membershipStatus == 'PENDING';
 
-  CommunityModel copyWith({String? membershipStatus}) {
+  CommunityModel copyWith({String? membershipStatus, int? memberCount}) {
     return CommunityModel(
       id: id,
       name: name,
@@ -36,12 +60,21 @@ class CommunityModel {
       bannerUrl: bannerUrl,
       location: location,
       isPublic: isPublic,
-      memberCount: memberCount,
+      memberCount: memberCount ?? this.memberCount,
       membershipStatus: membershipStatus ?? this.membershipStatus,
+      customQuestions: customQuestions,
+      cardConfig: cardConfig,
     );
   }
 
   factory CommunityModel.fromJson(Map<String, dynamic> json) {
+    final rawQuestions = json['customQuestions'];
+    final questions = (rawQuestions is List)
+        ? rawQuestions
+            .map((q) => CustomQuestion.fromJson(q as Map<String, dynamic>))
+            .toList()
+        : <CustomQuestion>[];
+
     return CommunityModel(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -53,6 +86,8 @@ class CommunityModel {
       isPublic: json['isPublic'] as bool? ?? true,
       memberCount: (json['_count'] as Map<String, dynamic>?)?['members'] as int? ?? 0,
       membershipStatus: json['membershipStatus'] as String?,
+      customQuestions: questions,
+      cardConfig: json['cardConfig'] as Map<String, dynamic>?,
     );
   }
 }
@@ -66,6 +101,7 @@ class CommunityMemberModel {
   final String? displayName;
   final String? photoUrl;
   final String? memberId;
+  final String? communityMemberId;
 
   const CommunityMemberModel({
     required this.id,
@@ -76,6 +112,7 @@ class CommunityMemberModel {
     this.displayName,
     this.photoUrl,
     this.memberId,
+    this.communityMemberId,
   });
 
   factory CommunityMemberModel.fromJson(Map<String, dynamic> json) {
@@ -89,6 +126,7 @@ class CommunityMemberModel {
       displayName: user['displayName'] as String?,
       photoUrl: user['photoUrl'] as String?,
       memberId: user['memberId'] as String?,
+      communityMemberId: json['communityMemberId'] as String?,
     );
   }
 
@@ -163,6 +201,56 @@ class CommunityEventModel {
 
   bool get isFree => price == 0;
   bool get isFull => maxParticipants != null && registrantCount >= maxParticipants!;
+}
+
+class OrgMember {
+  final String id;
+  final String? displayName;
+  final String? photoUrl;
+
+  const OrgMember({required this.id, this.displayName, this.photoUrl});
+
+  factory OrgMember.fromJson(Map<String, dynamic> json) {
+    final user = json['user'] as Map<String, dynamic>? ?? {};
+    return OrgMember(
+      id: json['id'] as String,
+      displayName: user['displayName'] as String?,
+      photoUrl: user['photoUrl'] as String?,
+    );
+  }
+
+  String get initials {
+    if (displayName == null || displayName!.isEmpty) return '?';
+    final parts = displayName!.trim().split(' ');
+    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    return parts[0][0].toUpperCase();
+  }
+}
+
+class OrgPositionModel {
+  final String id;
+  final String name;
+  final int order;
+  final List<OrgMember> members;
+
+  const OrgPositionModel({
+    required this.id,
+    required this.name,
+    required this.order,
+    required this.members,
+  });
+
+  factory OrgPositionModel.fromJson(Map<String, dynamic> json) {
+    final assignments = json['assignments'] as List? ?? [];
+    return OrgPositionModel(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      order: json['order'] as int? ?? 0,
+      members: assignments
+          .map((a) => OrgMember.fromJson(a['member'] as Map<String, dynamic>))
+          .toList(),
+    );
+  }
 }
 
 class MyCommunityModel {

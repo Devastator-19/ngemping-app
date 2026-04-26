@@ -6,6 +6,7 @@ import '../../core/models/community_model.dart';
 import '../auth/providers/auth_provider.dart';
 import 'providers/community_detail_provider.dart';
 import 'providers/community_provider.dart';
+import 'member_card_screen.dart';
 
 class CommunityDetailScreen extends StatelessWidget {
   final CommunityModel community;
@@ -52,13 +53,22 @@ class _CommunityDetailViewState extends State<_CommunityDetailView>
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<CommunityDetailProvider>();
+    final auth = context.watch<AppAuthProvider>();
     final community = provider.community ?? widget.initialCommunity;
+
+    final myMember = provider.members
+        .where((m) => m.userId == auth.user?.uid && m.status == 'ACTIVE')
+        .firstOrNull;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxScrolled) => [
-          _CommunityAppBar(community: community, provider: provider),
+          _CommunityAppBar(
+            community: community,
+            provider: provider,
+            myMember: myMember,
+          ),
           SliverPersistentHeader(
             pinned: true,
             delegate: _TabBarDelegate(
@@ -103,8 +113,20 @@ class _CommunityDetailViewState extends State<_CommunityDetailView>
 class _CommunityAppBar extends StatelessWidget {
   final CommunityModel community;
   final CommunityDetailProvider provider;
+  final CommunityMemberModel? myMember;
 
-  const _CommunityAppBar({required this.community, required this.provider});
+  const _CommunityAppBar({
+    required this.community,
+    required this.provider,
+    this.myMember,
+  });
+
+  bool get _hasCard {
+    final cfg = community.cardConfig;
+    if (cfg == null) return false;
+    final bg = cfg['backgroundUrl'] as String? ?? '';
+    return bg.isNotEmpty;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,6 +141,27 @@ class _CommunityAppBar extends StatelessWidget {
         icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.white),
         onPressed: () => Navigator.of(context).pop(),
       ),
+      actions: myMember != null && _hasCard
+          ? [
+              IconButton(
+                tooltip: 'Kartu Anggota',
+                icon: const Icon(Icons.credit_card_outlined, color: AppColors.white),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MemberCardScreen(
+                      cardConfig: community.cardConfig!,
+                      memberName: myMember!.displayName ?? 'Anggota',
+                      communityMemberId: myMember!.communityMemberId,
+                      memberPhotoUrl: myMember!.photoUrl,
+                      communityName: community.name,
+                      communityLogoUrl: community.logoUrl,
+                    ),
+                  ),
+                ),
+              ),
+            ]
+          : null,
       flexibleSpace: FlexibleSpaceBar(
         collapseMode: CollapseMode.parallax,
         background: Stack(
@@ -468,20 +511,16 @@ class _OrganisasiTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (provider.loadingMembers && provider.members.isEmpty) {
-      return const Center(
-          child: CircularProgressIndicator(color: AppColors.primary));
+    if (provider.loadingOrg && provider.orgPositions.isEmpty) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
     }
 
-    final owners = provider.owners;
-    final admins = provider.admins;
+    final positions = provider.orgPositions;
     final memberCount = provider.community?.memberCount ?? 0;
-    final adminCount = owners.length + admins.length;
 
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        // Summary cards
         Row(
           children: [
             Expanded(
@@ -495,9 +534,9 @@ class _OrganisasiTab extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: _StatCard(
-                icon: Icons.manage_accounts_outlined,
-                label: 'Pengurus',
-                value: '$adminCount',
+                icon: Icons.account_tree_outlined,
+                label: 'Jabatan',
+                value: '${positions.length}',
                 color: AppColors.secondary,
               ),
             ),
@@ -505,27 +544,93 @@ class _OrganisasiTab extends StatelessWidget {
         ),
         const SizedBox(height: 24),
 
-        // Ketua
-        if (owners.isNotEmpty) ...[
-          _SectionTitle('Ketua'),
-          const SizedBox(height: 10),
-          ...owners.map((m) => _MemberTile(member: m, showRoleBadge: true)),
-          const SizedBox(height: 20),
-        ],
-
-        // Pengurus
-        if (admins.isNotEmpty) ...[
-          _SectionTitle('Pengurus'),
-          const SizedBox(height: 10),
-          ...admins.map((m) => _MemberTile(member: m, showRoleBadge: true)),
-          const SizedBox(height: 20),
-        ],
-
-        if (owners.isEmpty && admins.isEmpty)
+        if (positions.isEmpty)
           _EmptyState(
             icon: Icons.groups_outlined,
-            message: 'Belum ada data pengurus.',
+            message: 'Belum ada struktur organisasi.',
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade100),
+            ),
+            child: Column(
+              children: [
+                for (int i = 0; i < positions.length; i++) ...[
+                  if (i > 0) Divider(height: 1, color: Colors.grey.shade50),
+                  _OrgPositionTile(position: positions[i]),
+                ],
+              ],
+            ),
           ),
+      ],
+    );
+  }
+}
+
+class _OrgPositionTile extends StatelessWidget {
+  final OrgPositionModel position;
+  const _OrgPositionTile({required this.position});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  position.name,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                ),
+                if (position.members.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: position.members.map((m) => _MemberChip(member: m)).toList(),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 4),
+                  Text('Kosong', style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MemberChip extends StatelessWidget {
+  final OrgMember member;
+  const _MemberChip({required this.member});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CircleAvatar(
+          radius: 11,
+          backgroundColor: const Color(0xFFEDF4ED),
+          backgroundImage: member.photoUrl != null ? NetworkImage(member.photoUrl!) : null,
+          child: member.photoUrl == null
+              ? Text(member.initials, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.primary))
+              : null,
+        ),
+        const SizedBox(width: 5),
+        Text(
+          member.displayName ?? '-',
+          style: const TextStyle(fontSize: 12, color: Color(0xFF374151)),
+        ),
       ],
     );
   }

@@ -24,6 +24,10 @@ class CommunityDetailProvider extends ChangeNotifier {
   bool _hasMoreEvents = true;
   int _eventsPage = 1;
 
+  // Org positions
+  List<OrgPositionModel> _orgPositions = [];
+  bool _loadingOrg = false;
+
   // Join/leave state
   bool _isJoining = false;
 
@@ -39,6 +43,9 @@ class CommunityDetailProvider extends ChangeNotifier {
   List<CommunityEventModel> get events => _events;
   bool get loadingEvents => _loadingEvents;
   bool get hasMoreEvents => _hasMoreEvents;
+
+  List<OrgPositionModel> get orgPositions => _orgPositions;
+  bool get loadingOrg => _loadingOrg;
 
   bool get isJoining => _isJoining;
 
@@ -129,11 +136,26 @@ class CommunityDetailProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> fetchOrgPositions() async {
+    _loadingOrg = true;
+    notifyListeners();
+    try {
+      final res = await ApiClient.instance.get('/communities/$communityId/org/positions');
+      final list = res.data['data'] as List;
+      _orgPositions = list
+          .map((e) => OrgPositionModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {}
+    _loadingOrg = false;
+    notifyListeners();
+  }
+
   Future<void> fetchAll() async {
     await Future.wait([
       fetchDetail(),
       fetchMembers(reset: true),
       fetchEvents(reset: true),
+      fetchOrgPositions(),
     ]);
   }
 
@@ -145,17 +167,9 @@ class CommunityDetailProvider extends ChangeNotifier {
       final res = await ApiClient.instance.post('/communities/$communityId/join');
       final status = res.data['data']['status'] as String;
       if (_community != null) {
-        _community = CommunityModel(
-          id: _community!.id,
-          name: _community!.name,
-          slug: _community!.slug,
-          description: _community!.description,
-          logoUrl: _community!.logoUrl,
-          bannerUrl: _community!.bannerUrl,
-          location: _community!.location,
-          isPublic: _community!.isPublic,
-          memberCount: _community!.memberCount + (status == 'ACTIVE' ? 1 : 0),
+        _community = _community!.copyWith(
           membershipStatus: status,
+          memberCount: _community!.memberCount + (status == 'ACTIVE' ? 1 : 0),
         );
       }
       _isJoining = false;
@@ -175,17 +189,9 @@ class CommunityDetailProvider extends ChangeNotifier {
     try {
       await ApiClient.instance.delete('/communities/$communityId/join');
       if (_community != null) {
-        _community = CommunityModel(
-          id: _community!.id,
-          name: _community!.name,
-          slug: _community!.slug,
-          description: _community!.description,
-          logoUrl: _community!.logoUrl,
-          bannerUrl: _community!.bannerUrl,
-          location: _community!.location,
-          isPublic: _community!.isPublic,
+        _community = _community!.copyWith(
+          membershipStatus: '',
           memberCount: _community!.memberCount > 0 ? _community!.memberCount - 1 : 0,
-          membershipStatus: null,
         );
       }
       // Refresh members after leave
