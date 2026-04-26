@@ -18,18 +18,10 @@ class JoinCommunitySheet extends StatefulWidget {
 class _JoinCommunitySheetState extends State<JoinCommunitySheet> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers for legacy fields (used when no custom questions)
-  final _cityController = TextEditingController();
-  final _motivationController = TextEditingController();
-  final _experienceController = TextEditingController();
-
-  // Controllers for custom questions keyed by question id
   late final Map<String, TextEditingController> _customControllers;
-
   bool _isSubmitting = false;
 
-  bool get _hasCustomQuestions =>
-      widget.community.customQuestions.isNotEmpty;
+  bool get _hasCustomQuestions => widget.community.customQuestions.isNotEmpty;
 
   @override
   void initState() {
@@ -42,12 +34,7 @@ class _JoinCommunitySheetState extends State<JoinCommunitySheet> {
 
   @override
   void dispose() {
-    _cityController.dispose();
-    _motivationController.dispose();
-    _experienceController.dispose();
-    for (final c in _customControllers.values) {
-      c.dispose();
-    }
+    for (final c in _customControllers.values) c.dispose();
     super.dispose();
   }
 
@@ -56,9 +43,7 @@ class _JoinCommunitySheetState extends State<JoinCommunitySheet> {
     setState(() => _isSubmitting = true);
 
     final Map<String, dynamic> formData;
-
     if (_hasCustomQuestions) {
-      // Build customAnswers as list: [{ id, label, answer }]
       final answers = <Map<String, String>>[];
       for (final q in widget.community.customQuestions) {
         final text = _customControllers[q.id]?.text.trim() ?? '';
@@ -66,12 +51,7 @@ class _JoinCommunitySheetState extends State<JoinCommunitySheet> {
       }
       formData = {'customAnswers': answers};
     } else {
-      formData = {
-        'domisili': _cityController.text.trim(),
-        'motivasi': _motivationController.text.trim(),
-      };
-      final exp = _experienceController.text.trim();
-      if (exp.isNotEmpty) formData['pengalaman'] = exp;
+      formData = {};
     }
 
     final msg = await context.read<CommunityProvider>().joinCommunity(
@@ -212,11 +192,8 @@ class _JoinCommunitySheetState extends State<JoinCommunitySheet> {
               ),
               const SizedBox(height: 20),
 
-              // Form fields
-              if (_hasCustomQuestions)
-                ..._buildCustomFields()
-              else
-                ..._buildLegacyFields(),
+              // Custom questions (jika ada)
+              if (_hasCustomQuestions) ..._buildCustomFields(),
 
               const SizedBox(height: 28),
 
@@ -296,37 +273,6 @@ class _JoinCommunitySheetState extends State<JoinCommunitySheet> {
     return widgets;
   }
 
-  // Original hardcoded fields (backward compat for communities without custom questions)
-  List<Widget> _buildLegacyFields() {
-    return [
-      _SectionLabel('Kota / Domisili *'),
-      const SizedBox(height: 8),
-      _FormField(
-        controller: _cityController,
-        hint: 'Contoh: Bandung, Jawa Barat',
-        validator: (v) =>
-            (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
-      ),
-      const SizedBox(height: 16),
-      _SectionLabel('Alasan Ingin Bergabung *'),
-      const SizedBox(height: 8),
-      _FormField(
-        controller: _motivationController,
-        hint: 'Ceritakan alasan kamu ingin bergabung ke komunitas ini...',
-        maxLines: 3,
-        validator: (v) =>
-            (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
-      ),
-      const SizedBox(height: 16),
-      _SectionLabel('Pengalaman Outdoor (opsional)'),
-      const SizedBox(height: 8),
-      _FormField(
-        controller: _experienceController,
-        hint: 'Ceritakan pengalaman camping atau kegiatan outdoor kamu...',
-        maxLines: 2,
-      ),
-    ];
-  }
 }
 
 // ---------------------------------------------------------------------------
