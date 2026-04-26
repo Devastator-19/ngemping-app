@@ -11,6 +11,9 @@ class UserModel {
   final String? gender;
   final String? provinsi;
   final String? district;
+  final String? nickName;
+  final String? placeOfBirth;
+  final DateTime? dateOfBirth;
 
   const UserModel({
     required this.uid,
@@ -23,6 +26,9 @@ class UserModel {
     this.gender,
     this.provinsi,
     this.district,
+    this.nickName,
+    this.placeOfBirth,
+    this.dateOfBirth,
   });
 
   factory UserModel.fromFirebaseUser(User user) {
@@ -50,6 +56,11 @@ class UserModel {
       gender: json['gender'] as String?,
       provinsi: json['provinsi'] as String?,
       district: json['district'] as String?,
+      nickName: json['nickName'] as String?,
+      placeOfBirth: json['placeOfBirth'] as String?,
+      dateOfBirth: json['dateOfBirth'] != null
+          ? DateTime.tryParse(json['dateOfBirth'] as String)
+          : null,
     );
   }
 
@@ -63,6 +74,9 @@ class UserModel {
     String? gender,
     String? provinsi,
     String? district,
+    String? nickName,
+    String? placeOfBirth,
+    DateTime? dateOfBirth,
   }) {
     return UserModel(
       uid: uid,
@@ -75,6 +89,9 @@ class UserModel {
       gender: gender ?? this.gender,
       provinsi: provinsi ?? this.provinsi,
       district: district ?? this.district,
+      nickName: nickName ?? this.nickName,
+      placeOfBirth: placeOfBirth ?? this.placeOfBirth,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
     );
   }
 

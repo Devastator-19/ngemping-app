@@ -84,17 +84,9 @@ class CommunityProvider extends ChangeNotifier {
 
       _communities = _communities.map((c) {
         if (c.id == communityId) {
-          return CommunityModel(
-            id: c.id,
-            name: c.name,
-            slug: c.slug,
-            description: c.description,
-            logoUrl: c.logoUrl,
-            bannerUrl: c.bannerUrl,
-            location: c.location,
-            isPublic: c.isPublic,
-            memberCount: c.memberCount + (status == 'ACTIVE' ? 1 : 0),
+          return c.copyWith(
             membershipStatus: status,
+            memberCount: c.memberCount + (status == 'ACTIVE' ? 1 : 0),
           );
         }
         return c;
@@ -115,17 +107,9 @@ class CommunityProvider extends ChangeNotifier {
       await ApiClient.instance.delete('/communities/$communityId/join');
       _communities = _communities.map((c) {
         if (c.id == communityId) {
-          return CommunityModel(
-            id: c.id,
-            name: c.name,
-            slug: c.slug,
-            description: c.description,
-            logoUrl: c.logoUrl,
-            bannerUrl: c.bannerUrl,
-            location: c.location,
-            isPublic: c.isPublic,
+          return c.copyWith(
+            membershipStatus: '',
             memberCount: c.memberCount > 0 ? c.memberCount - 1 : 0,
-            membershipStatus: null,
           );
         }
         return c;

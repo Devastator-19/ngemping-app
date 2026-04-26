@@ -75,11 +75,17 @@ class AppAuthProvider extends ChangeNotifier {
       // Merge backend fields into user model
       // Backend uses: address, province, district, gender (MALE/FEMALE/OTHER)
       if (_user != null) {
+        final dob = data['dateOfBirth'] as String?;
         _user = _user!.copyWith(
+          displayName: data['displayName'] as String? ?? _user!.displayName,
+          phoneNumber: data['phoneNumber'] as String?,
           alamat: data['address'] as String?,
           gender: data['gender'] as String?,
           provinsi: data['province'] as String?,
           district: data['district'] as String?,
+          nickName: data['nickName'] as String?,
+          placeOfBirth: data['placeOfBirth'] as String?,
+          dateOfBirth: dob != null ? DateTime.tryParse(dob) : null,
         );
       }
       notifyListeners();
@@ -92,6 +98,10 @@ class AppAuthProvider extends ChangeNotifier {
 
   Future<bool> updateProfile({
     String? displayName,
+    String? nickName,
+    String? placeOfBirth,
+    DateTime? dateOfBirth,
+    String? phoneNumber,
     String? alamat,
     String? gender,
     String? provinsi,
@@ -101,26 +111,32 @@ class AppAuthProvider extends ChangeNotifier {
       _setLoading(true);
       _setError(null);
 
-      // Backend field names: address, province, district, gender (MALE/FEMALE/OTHER)
-      final body = <String, dynamic>{};
-      if (displayName != null) body['displayName'] = displayName;
-      if (alamat != null) body['address'] = alamat;
-      if (gender != null) body['gender'] = gender;
-      if (provinsi != null) body['province'] = provinsi;
-      if (district != null) body['district'] = district;
+      final body = <String, dynamic>{
+        'displayName': displayName,
+        'nickName': nickName,
+        'placeOfBirth': placeOfBirth,
+        'dateOfBirth': dateOfBirth?.toIso8601String().split('T').first,
+        'phoneNumber': phoneNumber,
+        'address': alamat,
+        'gender': gender,
+        'province': provinsi,
+        'district': district,
+      };
 
       await ApiClient.instance.patch('/users/me', data: body);
 
-      // Update display name di Firebase juga jika berubah
       if (displayName != null &&
           displayName != _auth.currentUser?.displayName) {
         await _auth.currentUser?.updateDisplayName(displayName);
         await _auth.currentUser?.reload();
       }
 
-      // Update local user model
       _user = _user?.copyWith(
         displayName: displayName,
+        nickName: nickName,
+        placeOfBirth: placeOfBirth,
+        dateOfBirth: dateOfBirth,
+        phoneNumber: phoneNumber,
         alamat: alamat,
         gender: gender,
         provinsi: provinsi,

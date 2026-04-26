@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/services/api_client.dart';
 import '../auth/providers/auth_provider.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -15,12 +17,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
 
   late TextEditingController _nameCtrl;
+  late TextEditingController _nickNameCtrl;
+  late TextEditingController _placeOfBirthCtrl;
+  late TextEditingController _phoneCtrl;
   late TextEditingController _alamatCtrl;
-  late TextEditingController _provinsiCtrl;
-  late TextEditingController _districtCtrl;
-  String? _selectedGender;
 
-  // label → backend enum value
+  DateTime? _dateOfBirth;
+  String? _selectedGender;
+  String? _selectedProvinsi;
+  String? _selectedDistrict;
+
+  List<Map<String, String>> _provinces = [];
+  List<Map<String, String>> _regencies = [];
+
   static const _genderOptions = {
     'Laki-laki': 'MALE',
     'Perempuan': 'FEMALE',
@@ -32,19 +41,68 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.initState();
     final user = context.read<AppAuthProvider>().user;
     _nameCtrl = TextEditingController(text: user?.displayName ?? '');
+    _nickNameCtrl = TextEditingController(text: user?.nickName ?? '');
+    _placeOfBirthCtrl = TextEditingController(text: user?.placeOfBirth ?? '');
+    _phoneCtrl = TextEditingController(text: user?.phoneNumber ?? '');
     _alamatCtrl = TextEditingController(text: user?.alamat ?? '');
-    _provinsiCtrl = TextEditingController(text: user?.provinsi ?? '');
-    _districtCtrl = TextEditingController(text: user?.district ?? '');
+    _dateOfBirth = user?.dateOfBirth;
     _selectedGender = user?.gender;
+    _selectedProvinsi = user?.provinsi?.isNotEmpty == true ? user!.provinsi : null;
+    _selectedDistrict = user?.district?.isNotEmpty == true ? user!.district : null;
+    _loadProvinces();
+  }
+
+  Future<void> _loadProvinces() async {
+    try {
+      final res = await ApiClient.instance.get('/wilayah/provinces');
+      final list = (res.data['data'] as List).cast<Map<String, dynamic>>();
+      if (mounted) {
+        setState(() => _provinces = list.map((e) => {'code': e['code'] as String, 'name': e['name'] as String}).toList());
+      }
+      if (_selectedProvinsi != null) _loadRegencies(_selectedProvinsi!);
+    } catch (_) {}
+  }
+
+  Future<void> _loadRegencies(String provinceName) async {
+    final p = _provinces.firstWhere((e) => e['name'] == provinceName, orElse: () => {});
+    if (p.isEmpty) return;
+    try {
+      final res = await ApiClient.instance.get('/wilayah/provinces/${p['code']}/regencies');
+      final list = (res.data['data'] as List).cast<Map<String, dynamic>>();
+      if (mounted) {
+        setState(() => _regencies = list.map((e) => {'code': e['code'] as String, 'name': e['name'] as String}).toList());
+      }
+    } catch (_) {}
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _nickNameCtrl.dispose();
+    _placeOfBirthCtrl.dispose();
+    _phoneCtrl.dispose();
     _alamatCtrl.dispose();
-    _provinsiCtrl.dispose();
-    _districtCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _dateOfBirth ?? DateTime(now.year - 20),
+      firstDate: DateTime(1940),
+      lastDate: now,
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: AppColors.primary,
+            onPrimary: Colors.white,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _dateOfBirth = picked);
   }
 
   Future<void> _save() async {
@@ -53,10 +111,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final auth = context.read<AppAuthProvider>();
     final ok = await auth.updateProfile(
       displayName: _nameCtrl.text.trim().isNotEmpty ? _nameCtrl.text.trim() : null,
+      nickName: _nickNameCtrl.text.trim().isNotEmpty ? _nickNameCtrl.text.trim() : null,
+      placeOfBirth: _placeOfBirthCtrl.text.trim().isNotEmpty ? _placeOfBirthCtrl.text.trim() : null,
+      dateOfBirth: _dateOfBirth,
+      phoneNumber: _phoneCtrl.text.trim().isNotEmpty ? _phoneCtrl.text.trim() : null,
       alamat: _alamatCtrl.text.trim().isNotEmpty ? _alamatCtrl.text.trim() : null,
       gender: _selectedGender,
-      provinsi: _provinsiCtrl.text.trim().isNotEmpty ? _provinsiCtrl.text.trim() : null,
-      district: _districtCtrl.text.trim().isNotEmpty ? _districtCtrl.text.trim() : null,
+      provinsi: _selectedProvinsi,
+      district: _selectedDistrict,
     );
 
     if (!mounted) return;
@@ -143,7 +205,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               _SectionLabel(label: 'Informasi Dasar'),
               const SizedBox(height: 12),
 
-              // Nama
               _buildField(
                 controller: _nameCtrl,
                 label: 'Nama Lengkap',
@@ -152,32 +213,71 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 14),
 
-              // Gender
+              _buildField(
+                controller: _nickNameCtrl,
+                label: 'Nama Panggilan',
+                hint: 'Contoh: Budi',
+                icon: Icons.badge_outlined,
+              ),
+              const SizedBox(height: 14),
+
+              _buildField(
+                controller: _phoneCtrl,
+                label: 'No. HP / WA',
+                hint: 'Contoh: 08123456789',
+                icon: Icons.phone_outlined,
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 14),
+
               _buildGenderPicker(),
+              const SizedBox(height: 28),
+
+              _SectionLabel(label: 'Data Kelahiran'),
+              const SizedBox(height: 12),
+
+              _buildField(
+                controller: _placeOfBirthCtrl,
+                label: 'Tempat Lahir',
+                hint: 'Contoh: Bandung',
+                icon: Icons.location_on_outlined,
+              ),
+              const SizedBox(height: 14),
+
+              _buildDatePicker(),
               const SizedBox(height: 28),
 
               _SectionLabel(label: 'Alamat'),
               const SizedBox(height: 12),
 
-              // Provinsi
-              _buildField(
-                controller: _provinsiCtrl,
+              _buildLocationPicker(
                 label: 'Provinsi',
-                hint: 'Contoh: Jawa Barat',
+                value: _selectedProvinsi,
+                hint: 'Pilih provinsi',
                 icon: Icons.map_outlined,
+                items: _provinces.map((e) => e['name']!).toList(),
+                onSelected: (val) {
+                  setState(() {
+                    _selectedProvinsi = val;
+                    _selectedDistrict = null;
+                    _regencies = [];
+                  });
+                  _loadRegencies(val);
+                },
               ),
               const SizedBox(height: 14),
 
-              // District / Kota/Kabupaten
-              _buildField(
-                controller: _districtCtrl,
+              _buildLocationPicker(
                 label: 'Kota / Kabupaten',
-                hint: 'Contoh: Bandung',
+                value: _selectedDistrict,
+                hint: _selectedProvinsi == null ? 'Pilih provinsi dulu' : 'Pilih kota / kabupaten',
                 icon: Icons.location_city_outlined,
+                items: _regencies.map((e) => e['name']!).toList(),
+                enabled: _selectedProvinsi != null,
+                onSelected: (val) => setState(() => _selectedDistrict = val),
               ),
               const SizedBox(height: 14),
 
-              // Alamat lengkap
               _buildField(
                 controller: _alamatCtrl,
                 label: 'Alamat Lengkap',
@@ -187,7 +287,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Save button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -222,12 +321,62 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
+  Widget _buildDatePicker() {
+    final label = _dateOfBirth != null
+        ? DateFormat('dd MMMM yyyy', 'id').format(_dateOfBirth!)
+        : 'Pilih tanggal lahir';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Tanggal Lahir',
+          style: GoogleFonts.nunito(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textMedium,
+          ),
+        ),
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: _pickDate,
+          child: Container(
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.calendar_today_outlined,
+                    size: 20, color: AppColors.textLight),
+                const SizedBox(width: 10),
+                Text(
+                  label,
+                  style: GoogleFonts.nunito(
+                    fontSize: 14,
+                    color: _dateOfBirth != null
+                        ? AppColors.textDark
+                        : AppColors.textLight,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildField({
     required TextEditingController controller,
     required String label,
     required String hint,
     required IconData icon,
     int maxLines = 1,
+    TextInputType keyboardType = TextInputType.text,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,6 +393,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         TextFormField(
           controller: controller,
           maxLines: maxLines,
+          keyboardType: keyboardType,
           style: GoogleFonts.nunito(fontSize: 14, color: AppColors.textDark),
           decoration: InputDecoration(
             hintText: hint,
@@ -270,6 +420,142 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildLocationPicker({
+    required String label,
+    required String? value,
+    required String hint,
+    required IconData icon,
+    required List<String> items,
+    required void Function(String) onSelected,
+    bool enabled = true,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textMedium)),
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: enabled && items.isNotEmpty
+              ? () => _showLocationSheet(label: label, items: items, selected: value, onSelected: onSelected)
+              : null,
+          child: Container(
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: enabled ? AppColors.surface : AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 20, color: AppColors.textLight),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    value ?? hint,
+                    style: GoogleFonts.nunito(
+                      fontSize: 14,
+                      color: value != null ? AppColors.textDark : AppColors.textLight,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (enabled) const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: AppColors.textLight),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showLocationSheet({
+    required String label,
+    required List<String> items,
+    required String? selected,
+    required void Function(String) onSelected,
+  }) {
+    final searchCtrl = TextEditingController();
+    List<String> filtered = List.from(items);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            void onSearch(String q) {
+              setSheetState(() {
+                filtered = q.isEmpty
+                    ? List.from(items)
+                    : items.where((e) => e.toLowerCase().contains(q.toLowerCase())).toList();
+              });
+            }
+
+            return DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.7,
+              maxChildSize: 0.92,
+              builder: (_, scrollCtrl) => Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.divider, borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(label, style: GoogleFonts.comfortaa(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark)),
+                  ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: TextField(
+                      controller: searchCtrl,
+                      onChanged: onSearch,
+                      autofocus: true,
+                      style: GoogleFonts.nunito(fontSize: 14, color: AppColors.textDark),
+                      decoration: InputDecoration(
+                        hintText: 'Cari...',
+                        hintStyle: GoogleFonts.nunito(fontSize: 14, color: AppColors.textLight),
+                        prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppColors.textLight),
+                        filled: true,
+                        fillColor: AppColors.surfaceVariant,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollCtrl,
+                      itemCount: filtered.length,
+                      itemBuilder: (_, i) {
+                        final item = filtered[i];
+                        final isSelected = item == selected;
+                        return ListTile(
+                          title: Text(item, style: GoogleFonts.nunito(fontSize: 14, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500, color: isSelected ? AppColors.primary : AppColors.textDark)),
+                          trailing: isSelected ? const Icon(Icons.check_rounded, color: AppColors.primary, size: 20) : null,
+                          onTap: () {
+                            onSelected(item);
+                            Navigator.pop(ctx);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
