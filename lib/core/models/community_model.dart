@@ -18,6 +18,48 @@ class CustomQuestion {
   }
 }
 
+class SocialMediaModel {
+  final String? instagram;
+  final String? whatsapp;
+  final String? facebook;
+  final String? tiktok;
+  final String? youtube;
+  final String? website;
+
+  const SocialMediaModel({
+    this.instagram,
+    this.whatsapp,
+    this.facebook,
+    this.tiktok,
+    this.youtube,
+    this.website,
+  });
+
+  bool get isEmpty =>
+      instagram == null &&
+      whatsapp == null &&
+      facebook == null &&
+      tiktok == null &&
+      youtube == null &&
+      website == null;
+
+  factory SocialMediaModel.fromJson(Map<String, dynamic> json) {
+    String? val(String key) {
+      final v = json[key];
+      if (v == null || (v is String && v.trim().isEmpty)) return null;
+      return v as String;
+    }
+    return SocialMediaModel(
+      instagram: val('instagram'),
+      whatsapp: val('whatsapp'),
+      facebook: val('facebook'),
+      tiktok: val('tiktok'),
+      youtube: val('youtube'),
+      website: val('website'),
+    );
+  }
+}
+
 class CommunityModel {
   final String id;
   final String name;
@@ -31,6 +73,7 @@ class CommunityModel {
   final String? membershipStatus;
   final List<CustomQuestion> customQuestions;
   final Map<String, dynamic>? cardConfig;
+  final SocialMediaModel? socialMedia;
 
   const CommunityModel({
     required this.id,
@@ -45,6 +88,7 @@ class CommunityModel {
     this.membershipStatus,
     this.customQuestions = const [],
     this.cardConfig,
+    this.socialMedia,
   });
 
   bool get isJoined => membershipStatus == 'ACTIVE';
@@ -64,6 +108,7 @@ class CommunityModel {
       membershipStatus: membershipStatus ?? this.membershipStatus,
       customQuestions: customQuestions,
       cardConfig: cardConfig,
+      socialMedia: socialMedia,
     );
   }
 
@@ -74,6 +119,11 @@ class CommunityModel {
             .map((q) => CustomQuestion.fromJson(q as Map<String, dynamic>))
             .toList()
         : <CustomQuestion>[];
+
+    final rawSm = json['socialMedia'];
+    final sm = rawSm is Map<String, dynamic>
+        ? SocialMediaModel.fromJson(rawSm)
+        : null;
 
     return CommunityModel(
       id: json['id'] as String,
@@ -88,6 +138,7 @@ class CommunityModel {
       membershipStatus: json['membershipStatus'] as String?,
       customQuestions: questions,
       cardConfig: json['cardConfig'] as Map<String, dynamic>?,
+      socialMedia: sm,
     );
   }
 }

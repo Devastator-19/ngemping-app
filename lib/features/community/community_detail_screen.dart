@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/models/community_model.dart';
 import '../auth/providers/auth_provider.dart';
@@ -42,7 +44,7 @@ class _CommunityDetailViewState extends State<_CommunityDetailView>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 4, vsync: this);
+    _tab = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -88,6 +90,7 @@ class _CommunityDetailViewState extends State<_CommunityDetailView>
                   Tab(text: 'Organisasi'),
                   Tab(text: 'Event'),
                   Tab(text: 'Anggota'),
+                  Tab(text: 'Sosmed'),
                 ],
               ),
             ),
@@ -100,6 +103,7 @@ class _CommunityDetailViewState extends State<_CommunityDetailView>
             _OrganisasiTab(provider: provider),
             _EventTab(provider: provider),
             _AnggotaTab(provider: provider),
+            _SosmedTab(community: community),
           ],
         ),
       ),
@@ -721,6 +725,245 @@ class _AnggotaTab extends StatelessWidget {
         }
         return _MemberTile(member: provider.members[i], showRoleBadge: true);
       },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tab: Sosmed
+// ---------------------------------------------------------------------------
+
+class _SosmedTab extends StatelessWidget {
+  final CommunityModel community;
+  const _SosmedTab({required this.community});
+
+  static const _platforms = [
+    (
+      key: 'instagram',
+      label: 'Instagram',
+      icon: Icons.photo_camera_outlined,
+      color: Color(0xFFE1306C),
+      buildUrl: _igUrl,
+    ),
+    (
+      key: 'tiktok',
+      label: 'TikTok',
+      icon: Icons.music_note_rounded,
+      color: Color(0xFF010101),
+      buildUrl: _ttUrl,
+    ),
+    (
+      key: 'facebook',
+      label: 'Facebook',
+      icon: Icons.facebook_rounded,
+      color: Color(0xFF1877F2),
+      buildUrl: _fbUrl,
+    ),
+    (
+      key: 'youtube',
+      label: 'YouTube',
+      icon: Icons.play_circle_outline_rounded,
+      color: Color(0xFFFF0000),
+      buildUrl: _ytUrl,
+    ),
+    (
+      key: 'whatsapp',
+      label: 'WhatsApp',
+      icon: Icons.chat_bubble_outline_rounded,
+      color: Color(0xFF25D366),
+      buildUrl: _waUrl,
+    ),
+    (
+      key: 'website',
+      label: 'Website',
+      icon: Icons.language_rounded,
+      color: AppColors.primary,
+      buildUrl: _webUrl,
+    ),
+  ];
+
+  static String _igUrl(String v) {
+    final handle = v.replaceFirst(RegExp(r'^@'), '');
+    return 'https://instagram.com/$handle';
+  }
+
+  static String _ttUrl(String v) {
+    final handle = v.startsWith('@') ? v : '@$v';
+    return 'https://tiktok.com/$handle';
+  }
+
+  static String _fbUrl(String v) =>
+      v.startsWith('http') ? v : 'https://facebook.com/$v';
+
+  static String _ytUrl(String v) =>
+      v.startsWith('http') ? v : 'https://youtube.com/$v';
+
+  static String _waUrl(String v) {
+    final digits = v.replaceAll(RegExp(r'[^\d]'), '');
+    return 'https://wa.me/$digits';
+  }
+
+  static String _webUrl(String v) =>
+      v.startsWith('http') ? v : 'https://$v';
+
+  String? _getValue(String key) {
+    final sm = community.socialMedia;
+    if (sm == null) return null;
+    switch (key) {
+      case 'instagram': return sm.instagram;
+      case 'tiktok':    return sm.tiktok;
+      case 'facebook':  return sm.facebook;
+      case 'youtube':   return sm.youtube;
+      case 'whatsapp':  return sm.whatsapp;
+      case 'website':   return sm.website;
+      default:          return null;
+    }
+  }
+
+  Future<void> _open(BuildContext context, String url, String label) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Tidak bisa membuka $label', style: GoogleFonts.nunito(fontSize: 13)),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          backgroundColor: AppColors.textDark,
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sm = community.socialMedia;
+    final hasAny = sm != null && !sm.isEmpty;
+
+    if (!hasAny) {
+      return _EmptyState(
+        icon: Icons.link_off_rounded,
+        message: 'Belum ada akun sosial media yang terdaftar.',
+      );
+    }
+
+    final available = _platforms
+        .where((p) => _getValue(p.key) != null)
+        .toList();
+
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: Column(
+            children: [
+              for (int i = 0; i < available.length; i++) ...[
+                if (i > 0) const Divider(height: 1, thickness: 1, color: AppColors.divider, indent: 16, endIndent: 16),
+                _SosmedTile(
+                  platform: available[i],
+                  value: _getValue(available[i].key)!,
+                  onTap: () => _open(
+                    context,
+                    available[i].buildUrl(_getValue(available[i].key)!),
+                    available[i].label,
+                  ),
+                  onLongPress: () {
+                    Clipboard.setData(ClipboardData(text: _getValue(available[i].key)!));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${available[i].label} disalin', style: GoogleFonts.nunito(fontSize: 13)),
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        margin: const EdgeInsets.all(16),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Tekan lama untuk menyalin',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.nunito(fontSize: 11, color: AppColors.textLight),
+        ),
+      ],
+    );
+  }
+}
+
+class _SosmedTile extends StatelessWidget {
+  final ({String key, String label, IconData icon, Color color, String Function(String) buildUrl}) platform;
+  final String value;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  const _SosmedTile({
+    required this.platform,
+    required this.value,
+    required this.onTap,
+    required this.onLongPress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: platform.color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(platform.icon, color: platform.color, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    platform.label,
+                    style: GoogleFonts.nunito(
+                      fontSize: 12,
+                      color: AppColors.textLight,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    value,
+                    style: GoogleFonts.nunito(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textDark,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.open_in_new_rounded, size: 16, color: AppColors.textLight),
+          ],
+        ),
+      ),
     );
   }
 }

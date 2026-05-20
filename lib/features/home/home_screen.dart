@@ -4,76 +4,19 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/models/community_model.dart';
+import '../../core/models/event_model.dart';
 import '../auth/login_screen.dart';
 import '../auth/register_screen.dart';
 import '../auth/providers/auth_provider.dart';
 import '../community/community_screen.dart';
+import '../community/community_detail_screen.dart';
 import '../community/providers/community_provider.dart';
 import '../profile/profile_screen.dart';
+import 'providers/home_provider.dart';
 import 'widgets/membership_card.dart';
-
-// ---------------------------------------------------------------------------
-// Static mock data
-// ---------------------------------------------------------------------------
-
-class _EventModel {
-  final String title;
-  final String date;
-  final String location;
-  final String category;
-  final int participants;
-  final int maxParticipants;
-  final Color accentColor;
-
-  const _EventModel({
-    required this.title,
-    required this.date,
-    required this.location,
-    required this.category,
-    required this.participants,
-    required this.maxParticipants,
-    required this.accentColor,
-  });
-}
-
-const _kEvents = [
-  _EventModel(
-    title: 'Camping Gunung Prau',
-    date: '22–24 Mar 2026',
-    location: 'Dieng, Jawa Tengah',
-    category: 'Camping',
-    participants: 34,
-    maxParticipants: 50,
-    accentColor: AppColors.primary,
-  ),
-  _EventModel(
-    title: 'Hiking Rinjani Base Camp',
-    date: '5–8 Apr 2026',
-    location: 'Lombok, NTB',
-    category: 'Hiking',
-    participants: 18,
-    maxParticipants: 25,
-    accentColor: AppColors.secondary,
-  ),
-  _EventModel(
-    title: 'Family Camp Baturaden',
-    date: '19–20 Apr 2026',
-    location: 'Banyumas, Jawa Tengah',
-    category: 'Family',
-    participants: 42,
-    maxParticipants: 60,
-    accentColor: Color(0xFF5B8DB8),
-  ),
-  _EventModel(
-    title: 'Sunrise Trek Merbabu',
-    date: '3 Mei 2026',
-    location: 'Magelang, Jawa Tengah',
-    category: 'Trekking',
-    participants: 12,
-    maxParticipants: 20,
-    accentColor: Color(0xFF8B6914),
-  ),
-];
+import '../event/event_detail_screen.dart';
+import '../event/event_screen.dart';
+import '../search/search_screen.dart';
 
 // ---------------------------------------------------------------------------
 // HomeScreen
@@ -92,9 +35,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Fetch komunitas saat home pertama kali load
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CommunityProvider>().fetchCommunities();
+      context.read<HomeProvider>().fetchHomeData();
     });
   }
 
@@ -107,8 +50,11 @@ class _HomeScreenState extends State<HomeScreen> {
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          _HomeBody(onGoToCommunity: () => _goToTab(2)),
-          const _PlaceholderTab(icon: Icons.event_rounded, label: 'Event'),
+          _HomeBody(
+          onGoToEvents: () => _goToTab(1),
+          onGoToCommunity: () => _goToTab(2),
+        ),
+          const EventScreen(),
           CommunityScreen(),
           const ProfileScreen(),
         ],
@@ -184,17 +130,34 @@ class _BottomNav extends StatelessWidget {
 // Home Body
 // ---------------------------------------------------------------------------
 
-class _HomeBody extends StatelessWidget {
+class _HomeBody extends StatefulWidget {
+  final VoidCallback onGoToEvents;
   final VoidCallback onGoToCommunity;
-  const _HomeBody({required this.onGoToCommunity});
+  const _HomeBody({required this.onGoToEvents, required this.onGoToCommunity});
+
+  @override
+  State<_HomeBody> createState() => _HomeBodyState();
+}
+
+class _HomeBodyState extends State<_HomeBody> {
+  Future<void> _onRefresh() async {
+    await Future.wait([
+      context.read<HomeProvider>().fetchHomeData(),
+      context.read<CommunityProvider>().fetchCommunities(),
+    ]);
+  }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AppAuthProvider>();
     final user = authProvider.user;
 
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
+    return RefreshIndicator(
+      onRefresh: _onRefresh,
+      color: AppColors.primary,
+      backgroundColor: AppColors.surface,
+      child: CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
       slivers: [
         _HomeAppBar(),
         SliverToBoxAdapter(
@@ -237,28 +200,19 @@ class _HomeBody extends StatelessWidget {
               // Upcoming events section
               _SectionHeader(
                 title: AppStrings.upcomingEvents,
-                onSeeAll: () {},
+                onSeeAll: widget.onGoToEvents,
               ),
               const SizedBox(height: 14),
-              SizedBox(
-                height: 220,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: _kEvents.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 14),
-                  itemBuilder: (_, i) => _EventCard(event: _kEvents[i]),
-                ),
-              ),
+              _HomeEventList(),
               const SizedBox(height: 28),
 
               // Communities section
               _SectionHeader(
                 title: AppStrings.aboutCommunity,
-                onSeeAll: onGoToCommunity,
+                onSeeAll: widget.onGoToCommunity,
               ),
               const SizedBox(height: 14),
-              _HomeCommunityList(onGoToCommunity: onGoToCommunity),
+              _HomeCommunityList(onGoToCommunity: widget.onGoToCommunity),
               const SizedBox(height: 20),
 
               // Join CTA — hanya tampil jika belum login
@@ -274,7 +228,8 @@ class _HomeBody extends StatelessWidget {
           ),
         ),
       ],
-    );
+      ), // CustomScrollView
+    ); // RefreshIndicator
   }
 }
 
@@ -349,20 +304,25 @@ class _HomeAppBar extends StatelessWidget {
         if (user != null)
           Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Hai, ${user.firstName}',
-                  style: GoogleFonts.nunito(
-                    color: AppColors.textDark,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Hai, ${user.firstName}',
+                    style: GoogleFonts.nunito(
+                      color: AppColors.textDark,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                _UserAvatar(user: user),
-              ],
+                  const SizedBox(width: 8),
+                  _UserAvatar(user: user),
+                ],
+              ),
             ),
           )
         else
@@ -451,7 +411,9 @@ class _SearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {},
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const SearchScreen()),
+      ),
       child: Container(
         height: 48,
         decoration: BoxDecoration(
@@ -613,13 +575,20 @@ class _HeroBanner extends StatelessWidget {
 class _StatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final home = context.watch<HomeProvider>();
+
+    String fmtCount(int n) {
+      if (n >= 1000) return '${(n / 1000).toStringAsFixed(n % 1000 == 0 ? 0 : 1)}K';
+      return '$n';
+    }
+
     return Row(
       children: [
-        _StatItem(value: '1.2K', label: AppStrings.members),
+        _StatItem(value: fmtCount(home.totalMembers), label: AppStrings.members),
         _StatDivider(),
-        _StatItem(value: '45', label: AppStrings.events),
+        _StatItem(value: fmtCount(home.totalEvents), label: AppStrings.events),
         _StatDivider(),
-        _StatItem(value: '12', label: AppStrings.locations),
+        _StatItem(value: fmtCount(home.totalCommunities), label: 'Komunitas'),
       ],
     );
   }
@@ -714,19 +683,77 @@ class _SectionHeader extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
+// Home Event List
+// ---------------------------------------------------------------------------
+
+class _HomeEventList extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final home = context.watch<HomeProvider>();
+
+    if (home.isLoading && home.upcomingEvents.isEmpty) {
+      return const SizedBox(
+        height: 220,
+        child: Center(
+          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+        ),
+      );
+    }
+
+    if (home.upcomingEvents.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Container(
+          height: 100,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: Center(
+            child: Text(
+              'Belum ada event yang dibuka',
+              style: GoogleFonts.nunito(fontSize: 13, color: AppColors.textLight),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 220,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: home.upcomingEvents.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 14),
+        itemBuilder: (_, i) => _EventCard(event: home.upcomingEvents[i]),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Event Card
 // ---------------------------------------------------------------------------
 
 class _EventCard extends StatelessWidget {
-  final _EventModel event;
+  final EventModel event;
 
   const _EventCard({required this.event});
 
   @override
   Widget build(BuildContext context) {
-    final fillPercent = event.participants / event.maxParticipants;
+    final fillPercent = event.maxParticipants != null && event.maxParticipants! > 0
+        ? event.registrationCount / event.maxParticipants!
+        : 0.0;
 
-    return Container(
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => EventDetailScreen(event: event)),
+      ),
+      child: Container(
       width: 200,
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -737,69 +764,18 @@ class _EventCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Color header strip
-          Container(
-            height: 80,
-            decoration: BoxDecoration(
-              color: event.accentColor.withValues(alpha: 0.12),
-            ),
-            child: Stack(
-              children: [
-                Positioned(
-                  right: -10,
-                  top: -10,
-                  child: Container(
-                    width: 70,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: event.accentColor.withValues(alpha: 0.1),
-                    ),
+          // Cover image OR color header
+          event.coverImageUrl != null
+              ? SizedBox(
+                  height: 80,
+                  child: Image.network(
+                    event.coverImageUrl!,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    errorBuilder: (_, __, ___) => _EventCardHeader(event: event),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: event.accentColor,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          event.category,
-                          style: GoogleFonts.nunito(
-                            color: AppColors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      Row(
-                        children: [
-                          Icon(Icons.calendar_today_rounded,
-                              size: 11, color: event.accentColor),
-                          const SizedBox(width: 4),
-                          Text(
-                            event.date,
-                            style: GoogleFonts.nunito(
-                              fontSize: 11,
-                              color: AppColors.textMedium,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+                )
+              : _EventCardHeader(event: event),
 
           // Content
           Padding(
@@ -819,23 +795,24 @@ class _EventCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on_outlined,
-                        size: 12, color: AppColors.textLight),
-                    const SizedBox(width: 3),
-                    Expanded(
-                      child: Text(
-                        event.location,
-                        style: GoogleFonts.nunito(
-                          fontSize: 11,
-                          color: AppColors.textLight,
+                if (event.location != null)
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on_outlined,
+                          size: 12, color: AppColors.textLight),
+                      const SizedBox(width: 3),
+                      Expanded(
+                        child: Text(
+                          event.location!,
+                          style: GoogleFonts.nunito(
+                            fontSize: 11,
+                            color: AppColors.textLight,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
                 const SizedBox(height: 10),
                 // Participants progress
                 Row(
@@ -844,7 +821,7 @@ class _EventCard extends StatelessWidget {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
-                          value: fillPercent,
+                          value: fillPercent.clamp(0.0, 1.0),
                           minHeight: 5,
                           backgroundColor: AppColors.divider,
                           valueColor: AlwaysStoppedAnimation(event.accentColor),
@@ -853,11 +830,75 @@ class _EventCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '${event.participants}/${event.maxParticipants}',
+                      event.maxParticipants != null
+                          ? '${event.registrationCount}/${event.maxParticipants}'
+                          : '${event.registrationCount}',
                       style: GoogleFonts.nunito(
                         fontSize: 10,
                         color: AppColors.textLight,
                         fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      ), // Container
+    ); // GestureDetector
+  }
+}
+
+class _EventCardHeader extends StatelessWidget {
+  final EventModel event;
+  const _EventCardHeader({required this.event});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 80,
+      decoration: BoxDecoration(color: event.accentColor.withValues(alpha: 0.12)),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -10, top: -10,
+            child: Container(
+              width: 70, height: 70,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: event.accentColor.withValues(alpha: 0.1),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: event.accentColor,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    event.categoryLabel,
+                    style: GoogleFonts.nunito(
+                      color: AppColors.white, fontSize: 10, fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today_rounded, size: 11, color: event.accentColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      event.formattedDate,
+                      style: GoogleFonts.nunito(
+                        fontSize: 11, color: AppColors.textMedium, fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -940,7 +981,12 @@ class _HomeCommunityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => CommunityDetailScreen(community: community)),
+      ),
+      child: Container(
       width: 200,
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -1082,7 +1128,8 @@ class _HomeCommunityCard extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ), // Container
+    ); // GestureDetector
   }
 }
 
@@ -1260,33 +1307,3 @@ class _JoinCtaCard extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Placeholder tabs
-// ---------------------------------------------------------------------------
-
-class _PlaceholderTab extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _PlaceholderTab({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 48, color: AppColors.primaryPastel),
-          const SizedBox(height: 12),
-          Text(
-            'Halaman $label\nSegera Hadir',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.nunito(
-              color: AppColors.textLight,
-              fontSize: 15,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

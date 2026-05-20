@@ -24,6 +24,10 @@ dependencies:
   intl: ^0.19.0
   # HTTP
   dio: ^5.7.0
+  # Payment WebView
+  webview_flutter: ^4.10.0
+  # Open URLs & social media links
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:
