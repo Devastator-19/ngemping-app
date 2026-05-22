@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_client.dart';
@@ -78,6 +80,12 @@ class NotificationService {
   /// Ambil FCM token dan kirim ke backend
   Future<void> registerToken() async {
     try {
+      // iOS: tunggu APNS token siap sebelum minta FCM token
+      if (Platform.isIOS) {
+        final apnsToken = await _messaging.getAPNSToken();
+        if (apnsToken == null) return;
+      }
+
       final token = await _messaging.getToken();
       if (token == null) return;
       await ApiClient.instance.patch('/users/me/fcm-token', data: {'fcmToken': token});

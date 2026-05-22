@@ -40,11 +40,13 @@ class _CommunityDetailView extends StatefulWidget {
 class _CommunityDetailViewState extends State<_CommunityDetailView>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
+  late bool _isAuthenticated;
 
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 5, vsync: this);
+    _isAuthenticated = context.read<AppAuthProvider>().isAuthenticated;
+    _tab = TabController(length: _isAuthenticated ? 5 : 4, vsync: this);
   }
 
   @override
@@ -85,12 +87,12 @@ class _CommunityDetailViewState extends State<_CommunityDetailView>
                 unselectedLabelColor: AppColors.textLight,
                 indicatorColor: AppColors.primary,
                 indicatorWeight: 2.5,
-                tabs: const [
-                  Tab(text: 'Tentang'),
-                  Tab(text: 'Organisasi'),
-                  Tab(text: 'Event'),
-                  Tab(text: 'Anggota'),
-                  Tab(text: 'Sosmed'),
+                tabs: [
+                  const Tab(text: 'Tentang'),
+                  const Tab(text: 'Organisasi'),
+                  if (_isAuthenticated) const Tab(text: 'Event'),
+                  const Tab(text: 'Anggota'),
+                  const Tab(text: 'Sosmed'),
                 ],
               ),
             ),
@@ -101,7 +103,7 @@ class _CommunityDetailViewState extends State<_CommunityDetailView>
           children: [
             _TentangTab(community: community),
             _OrganisasiTab(provider: provider),
-            _EventTab(provider: provider),
+            if (_isAuthenticated) _EventTab(provider: provider),
             _AnggotaTab(provider: provider),
             _SosmedTab(community: community),
           ],
@@ -666,25 +668,29 @@ class _EventTab extends StatelessWidget {
           child: CircularProgressIndicator(color: AppColors.primary));
     }
 
-    if (provider.events.isEmpty) {
+    final openEvents = provider.events.where((e) => e.status == 'OPEN').toList();
+
+    if (openEvents.isEmpty) {
       return _EmptyState(
         icon: Icons.event_outlined,
-        message: 'Belum ada event dari komunitas ini.',
+        message: provider.events.isEmpty
+            ? 'Belum ada event dari komunitas ini.'
+            : 'Tidak ada event yang sedang membuka pendaftaran.',
       );
     }
 
     return ListView.separated(
       padding: const EdgeInsets.all(20),
-      itemCount: provider.events.length + (provider.hasMoreEvents ? 1 : 0),
+      itemCount: openEvents.length + (provider.hasMoreEvents ? 1 : 0),
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, i) {
-        if (i == provider.events.length) {
+        if (i == openEvents.length) {
           return _LoadMoreButton(
             isLoading: provider.loadingEvents,
             onTap: () => provider.fetchEvents(),
           );
         }
-        return _EventCard(event: provider.events[i]);
+        return _EventCard(event: openEvents[i]);
       },
     );
   }

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/models/event_model.dart';
 import '../../core/theme/app_colors.dart';
+import '../auth/login_screen.dart';
 import '../auth/providers/auth_provider.dart';
 import '../payment/payment_webview_screen.dart';
 import 'widgets/register_event_sheet.dart';
@@ -36,16 +37,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   Future<void> _openRegisterSheet() async {
     final auth = context.read<AppAuthProvider>();
     if (!auth.isAuthenticated) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Kamu harus login untuk mendaftar event',
-            style: GoogleFonts.nunito(fontSize: 13),
-          ),
-          backgroundColor: AppColors.textDark,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
       );
       return;
     }
@@ -93,6 +86,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final event = _event;
+    final isAuth = context.watch<AppAuthProvider>().isAuthenticated;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -198,6 +192,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         paymentResult: _paymentResult,
         isFull: _isFull,
         isOpen: _isOpen,
+        isAuthenticated: isAuth,
         onRegister: _openRegisterSheet,
       ),
     );
@@ -212,6 +207,7 @@ class _BottomCta extends StatelessWidget {
   final PaymentResult? paymentResult;
   final bool isFull;
   final bool isOpen;
+  final bool isAuthenticated;
   final VoidCallback onRegister;
 
   const _BottomCta({
@@ -220,6 +216,7 @@ class _BottomCta extends StatelessWidget {
     this.paymentResult,
     required this.isFull,
     required this.isOpen,
+    required this.isAuthenticated,
     required this.onRegister,
   });
 
@@ -293,6 +290,13 @@ class _BottomCta extends StatelessWidget {
               color: AppColors.surfaceVariant,
               textColor: AppColors.textLight,
               onTap: null,
+            )
+          else if (!isAuthenticated)
+            _CtaButton(
+              label: 'Login untuk Daftar',
+              color: AppColors.primarySurface,
+              textColor: AppColors.primary,
+              onTap: onRegister,
             )
           else
             _CtaButton(
