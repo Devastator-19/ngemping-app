@@ -1,10 +1,14 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../core/models/event_model.dart';
+import '../../core/services/api_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../auth/login_screen.dart';
 import '../auth/providers/auth_provider.dart';
+import '../event/providers/event_provider.dart';
 import '../payment/payment_webview_screen.dart';
 import 'widgets/register_event_sheet.dart';
 
@@ -19,6 +23,8 @@ class EventDetailScreen extends StatefulWidget {
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
   late bool _registered;
+  late bool _waitingPayment;
+  bool _proofSubmitted = false;
   PaymentResult? _paymentResult;
   late EventModel _event;
 
@@ -27,7 +33,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     super.initState();
     _event = widget.event;
     final status = _event.myRegistrationStatus;
-    _registered = status == 'REGISTERED' || status == 'PENDING_PAYMENT';
+    _registered = status != null && status != 'CANCELLED';
+    _waitingPayment = status == 'WAITING_PAYMENT';
+    _proofSubmitted = status == 'REVIEWING';
     if (status == 'PENDING_PAYMENT') _paymentResult = PaymentResult.pending;
   }
 
@@ -53,22 +61,41 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     if (!mounted) return;
 
     if (result == true) {
-      // Free event — success
-      setState(() => _registered = true);
+      setState(() { _registered = true; _waitingPayment = false; });
       _showSnack('Pendaftaran berhasil! Sampai ketemu di event 🎉', AppColors.primary);
+    } else if (result == 'proof_submitted') {
+      setState(() { _registered = true; _waitingPayment = false; _proofSubmitted = true; });
+      _showSnack('Bukti pembayaran dikirim — menunggu verifikasi admin', AppColors.secondary);
+    } else if (result == 'waiting_payment') {
+      setState(() { _registered = true; _waitingPayment = true; _proofSubmitted = false; });
+      _showSnack('Kamu terdaftar! Upload bukti transfer untuk melanjutkan', AppColors.secondary);
     } else if (result is PaymentResult) {
       switch (result) {
         case PaymentResult.paid:
-          setState(() { _registered = true; _paymentResult = PaymentResult.paid; });
+          setState(() { _registered = true; _waitingPayment = false; _paymentResult = PaymentResult.paid; });
           _showSnack('Pembayaran berhasil! Kamu sudah terdaftar 🎉', AppColors.primary);
         case PaymentResult.pending:
-          setState(() { _registered = true; _paymentResult = PaymentResult.pending; });
+          setState(() { _registered = true; _waitingPayment = true; _paymentResult = PaymentResult.pending; });
           _showSnack('Pembayaran pending — cek email untuk instruksi selanjutnya', AppColors.secondary);
         case PaymentResult.failed:
           _showSnack('Pembayaran gagal. Silakan coba lagi.', AppColors.error);
         case PaymentResult.cancelled:
           break;
       }
+    }
+  }
+
+  Future<void> _openProofUploadSheet() async {
+    final submitted = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ProofUploadSheet(event: _event),
+    );
+    if (!mounted) return;
+    if (submitted == true) {
+      setState(() { _waitingPayment = false; _proofSubmitted = true; });
+      _showSnack('Bukti pembayaran dikirim — menunggu verifikasi admin', AppColors.secondary);
     }
   }
 
@@ -189,11 +216,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       bottomNavigationBar: _BottomCta(
         event: event,
         isRegistered: _registered,
+        waitingPayment: _waitingPayment,
+        proofSubmitted: _proofSubmitted,
         paymentResult: _paymentResult,
         isFull: _isFull,
         isOpen: _isOpen,
         isAuthenticated: isAuth,
         onRegister: _openRegisterSheet,
+        onUploadProof: _openProofUploadSheet,
       ),
     );
   }
@@ -204,20 +234,26 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 class _BottomCta extends StatelessWidget {
   final EventModel event;
   final bool isRegistered;
+  final bool waitingPayment;
+  final bool proofSubmitted;
   final PaymentResult? paymentResult;
   final bool isFull;
   final bool isOpen;
   final bool isAuthenticated;
   final VoidCallback onRegister;
+  final VoidCallback onUploadProof;
 
   const _BottomCta({
     required this.event,
     required this.isRegistered,
+    required this.waitingPayment,
+    required this.proofSubmitted,
     this.paymentResult,
     required this.isFull,
     required this.isOpen,
     required this.isAuthenticated,
     required this.onRegister,
+    required this.onUploadProof,
   });
 
   @override
@@ -263,12 +299,19 @@ class _BottomCta extends StatelessWidget {
           const SizedBox(width: 16),
 
           // Button
-          if (isRegistered && paymentResult == PaymentResult.pending)
+          if (isRegistered && proofSubmitted)
             _CtaButton(
-              label: 'Menunggu Pembayaran',
-              color: AppColors.secondarySurface,
-              textColor: AppColors.secondary,
+              label: 'Menunggu Verifikasi',
+              color: const Color(0xFFE8F0FE),
+              textColor: const Color(0xFF1A73E8),
               onTap: null,
+            )
+          else if (isRegistered && (waitingPayment || paymentResult == PaymentResult.pending))
+            _CtaButton(
+              label: 'Upload Bukti Transfer',
+              color: const Color(0xFFFFF3CD),
+              textColor: const Color(0xFF8A6200),
+              onTap: onUploadProof,
             )
           else if (isRegistered)
             _CtaButton(
@@ -621,6 +664,164 @@ class _HeaderChip extends StatelessWidget {
     );
   }
 }
+
+// ─── Proof upload sheet ───────────────────────────────────────────────────────
+
+class _ProofUploadSheet extends StatefulWidget {
+  final EventModel event;
+  const _ProofUploadSheet({required this.event});
+
+  @override
+  State<_ProofUploadSheet> createState() => _ProofUploadSheetState();
+}
+
+class _ProofUploadSheetState extends State<_ProofUploadSheet> {
+  bool _uploading = false;
+  bool _done = false;
+  String? _error;
+
+  Future<void> _pick() async {
+    setState(() { _uploading = true; _error = null; });
+    final provider = context.read<EventProvider>();
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+      if (picked == null) { setState(() => _uploading = false); return; }
+
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(picked.path, filename: 'proof.jpg'),
+      });
+      final uploadRes = await ApiClient.instance.post('/upload/image', data: formData);
+      final proofUrl = uploadRes.data['url'] as String;
+
+      await provider.submitPaymentProof(widget.event.id, proofUrl);
+
+      if (mounted) setState(() { _uploading = false; _done = true; });
+    } on RegistrationError catch (e) {
+      if (mounted) setState(() { _uploading = false; _error = e.message; });
+    } catch (_) {
+      if (mounted) setState(() { _uploading = false; _error = 'Upload gagal. Coba lagi.'; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final hasBankInfo = widget.event.bankName != null && widget.event.bankName!.isNotEmpty;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(24, 20, 24, 20 + bottomPadding),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Upload Bukti Transfer',
+            style: GoogleFonts.comfortaa(
+              fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.textDark,
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (hasBankInfo) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                children: [
+                  _BankInfoRow('Bank', widget.event.bankName!),
+                  const SizedBox(height: 8),
+                  _BankInfoRow('No. Rekening', widget.event.bankAccountNumber ?? '-', isMono: true),
+                  const SizedBox(height: 8),
+                  _BankInfoRow('Atas Nama', widget.event.bankAccountName ?? '-'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (_error != null) ...[
+            Text(_error!, style: GoogleFonts.nunito(fontSize: 13, color: AppColors.error)),
+            const SizedBox(height: 12),
+          ],
+          if (_done)
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(context, true),
+              icon: const Icon(Icons.check_circle_rounded, size: 18),
+              label: Text('Selesai', style: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w700)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+            )
+          else
+            ElevatedButton.icon(
+              onPressed: _uploading ? null : _pick,
+              icon: _uploading
+                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.white))
+                  : const Icon(Icons.upload_rounded, size: 18),
+              label: Text(
+                _uploading ? 'Mengupload…' : 'Pilih Foto dari Galeri',
+                style: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF59E0B),
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: const Color(0xFFF59E0B).withValues(alpha: 0.5),
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BankInfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool isMono;
+  const _BankInfoRow(this.label, this.value, {this.isMono = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: GoogleFonts.nunito(fontSize: 12, color: AppColors.textLight)),
+        Text(
+          value,
+          style: isMono
+              ? GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textDark, letterSpacing: 1.5)
+              : GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textDark),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _ColorBg extends StatelessWidget {
   final EventModel event;

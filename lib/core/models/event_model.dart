@@ -1,6 +1,20 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
+class EventAdditional {
+  final String name;
+  final double price;
+
+  const EventAdditional({required this.name, required this.price});
+
+  factory EventAdditional.fromJson(Map<String, dynamic> json) {
+    return EventAdditional(
+      name: json['name'] as String,
+      price: double.tryParse(json['price']?.toString() ?? '0') ?? 0,
+    );
+  }
+}
+
 class EventModel {
   final String id;
   final String title;
@@ -12,11 +26,16 @@ class EventModel {
   final DateTime endDate;
   final String status;
   final double price;
+  final int pricePerPax;
+  final List<EventAdditional> additionals;
+  final String? bankName;
+  final String? bankAccountNumber;
+  final String? bankAccountName;
   final int? maxParticipants;
   final String? coverImageUrl;
   final String? accentColorHex;
   final int registrationCount;
-  // null = not registered, 'REGISTERED', 'PENDING_PAYMENT', 'CANCELLED'
+  // null = not registered, 'REGISTERED', 'WAITING_PAYMENT', 'CANCELLED'
   final String? myRegistrationStatus;
 
   const EventModel({
@@ -30,6 +49,11 @@ class EventModel {
     required this.endDate,
     required this.status,
     required this.price,
+    this.pricePerPax = 1,
+    this.additionals = const [],
+    this.bankName,
+    this.bankAccountNumber,
+    this.bankAccountName,
     this.maxParticipants,
     this.coverImageUrl,
     this.accentColorHex,
@@ -39,6 +63,7 @@ class EventModel {
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
     final count = json['_count'] as Map<String, dynamic>?;
+    final rawAdditionals = json['additionals'] as List<dynamic>?;
     return EventModel(
       id: json['id'] as String,
       title: json['title'] as String,
@@ -50,6 +75,13 @@ class EventModel {
       endDate: DateTime.parse(json['endDate'] as String),
       status: json['status'] as String? ?? 'OPEN',
       price: double.tryParse(json['price']?.toString() ?? '0') ?? 0,
+      pricePerPax: json['pricePerPax'] as int? ?? 1,
+      additionals: rawAdditionals
+          ?.map((e) => EventAdditional.fromJson(e as Map<String, dynamic>))
+          .toList() ?? [],
+      bankName: json['bankName'] as String?,
+      bankAccountNumber: json['bankAccountNumber'] as String?,
+      bankAccountName: json['bankAccountName'] as String?,
       maxParticipants: json['maxParticipants'] as int?,
       coverImageUrl: json['coverImageUrl'] as String?,
       accentColorHex: json['accentColorHex'] as String?,

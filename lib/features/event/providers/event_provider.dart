@@ -78,6 +78,7 @@ class EventProvider extends ChangeNotifier {
     String eventId, {
     required int participantCount,
     List<Map<String, String>> participants = const [],
+    List<Map<String, dynamic>> selectedAdditionals = const [],
   }) async {
     try {
       final res = await ApiClient.instance.post(
@@ -85,6 +86,7 @@ class EventProvider extends ChangeNotifier {
         data: {
           'participantCount': participantCount,
           if (participants.isNotEmpty) 'participants': participants,
+          if (selectedAdditionals.isNotEmpty) 'selectedAdditionals': selectedAdditionals,
         },
       );
       final data = res.data['data'] as Map<String, dynamic>;
@@ -98,6 +100,18 @@ class EventProvider extends ChangeNotifier {
       throw RegistrationError(msg);
     } catch (_) {
       throw RegistrationError('Terjadi kesalahan');
+    }
+  }
+
+  Future<void> submitPaymentProof(String eventId, String proofImageUrl) async {
+    try {
+      await ApiClient.instance.post(
+        '/events/$eventId/proof',
+        data: {'proofImageUrl': proofImageUrl},
+      );
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] as String? ?? 'Gagal mengirim bukti';
+      throw RegistrationError(msg);
     }
   }
 }

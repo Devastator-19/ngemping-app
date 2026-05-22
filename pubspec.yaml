@@ -28,6 +28,8 @@ dependencies:
   webview_flutter: ^4.10.0
   # Open URLs & social media links
   url_launcher: ^6.3.1
+  # Image picker for proof upload
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
