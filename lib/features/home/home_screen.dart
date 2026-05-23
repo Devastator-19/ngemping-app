@@ -16,6 +16,8 @@ import 'providers/home_provider.dart';
 import 'widgets/membership_card.dart';
 import '../event/event_detail_screen.dart';
 import '../event/event_screen.dart';
+import '../notification/notification_screen.dart';
+import '../notification/providers/notification_provider.dart';
 import '../search/search_screen.dart';
 
 // ---------------------------------------------------------------------------
@@ -38,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CommunityProvider>().fetchCommunities();
       context.read<HomeProvider>().fetchHomeData();
+      context.read<NotificationProvider>().loadUnreadCount();
     });
   }
 
@@ -278,25 +281,45 @@ class _HomeAppBar extends StatelessWidget {
       ),
       actions: [
         // Notification bell
-        IconButton(
-          onPressed: () {},
-          icon: Stack(
-            children: [
-              const Icon(Icons.notifications_outlined, size: 26),
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: AppColors.secondaryLight,
-                    shape: BoxShape.circle,
-                  ),
-                ),
+        Consumer<NotificationProvider>(
+          builder: (context, notifProvider, _) {
+            final unread = notifProvider.unreadCount;
+            return IconButton(
+              onPressed: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const NotificationScreen()),
+                );
+                if (context.mounted) notifProvider.loadUnreadCount();
+              },
+              icon: Stack(
+                children: [
+                  const Icon(Icons.notifications_outlined, size: 26),
+                  if (unread > 0)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                        decoration: const BoxDecoration(
+                          color: AppColors.secondaryLight,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          unread > 99 ? '99+' : '$unread',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
 
         // Jika sudah login → tampilkan avatar + nama

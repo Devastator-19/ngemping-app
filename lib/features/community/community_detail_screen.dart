@@ -128,12 +128,7 @@ class _CommunityAppBar extends StatelessWidget {
     this.myMember,
   });
 
-  bool get _hasCard {
-    final cfg = community.cardConfig;
-    if (cfg == null) return false;
-    final bg = cfg['backgroundUrl'] as String? ?? '';
-    return bg.isNotEmpty;
-  }
+  bool get _hasCard => community.cardConfig != null;
 
   @override
   Widget build(BuildContext context) {
@@ -148,7 +143,7 @@ class _CommunityAppBar extends StatelessWidget {
         icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.white),
         onPressed: () => Navigator.of(context).pop(),
       ),
-      actions: myMember != null && _hasCard
+      actions: community.isJoined && _hasCard
           ? [
               IconButton(
                 tooltip: 'Kartu Anggota',
@@ -158,9 +153,9 @@ class _CommunityAppBar extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (_) => MemberCardScreen(
                       cardConfig: community.cardConfig!,
-                      memberName: myMember!.displayName ?? 'Anggota',
-                      communityMemberId: myMember!.communityMemberId,
-                      memberPhotoUrl: myMember!.photoUrl,
+                      memberName: myMember?.displayName ?? auth.user?.displayName ?? 'Anggota',
+                      communityMemberId: myMember?.communityMemberId,
+                      memberPhotoUrl: myMember?.photoUrl ?? auth.user?.photoURL,
                       communityName: community.name,
                       communityLogoUrl: community.logoUrl,
                     ),
@@ -353,7 +348,7 @@ class _JoinButton extends StatelessWidget {
             border: Border.all(color: AppColors.white.withValues(alpha: 0.4)),
           ),
           child: Text(
-            'Bergabung',
+            'Anggota',
             style: GoogleFonts.nunito(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,

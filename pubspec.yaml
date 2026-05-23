@@ -1,4 +1,4 @@
-name: ngemping_app
+name: outzy_app
 description: "Aplikasi super komunitas camping Indonesia."
 publish_to: 'none'
 
@@ -30,6 +30,8 @@ dependencies:
   url_launcher: ^6.3.1
   # Image picker for proof upload
   image_picker: ^1.1.2
+  # SMS OTP auto-fill
+  sms_autofill: ^2.0.0
 
 dev_dependencies:
   flutter_test:

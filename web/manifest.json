@@ -1,6 +1,6 @@
 {
-    "name": "ngemping_app",
-    "short_name": "ngemping_app",
+    "name": "Outzy",
+    "short_name": "Outzy",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

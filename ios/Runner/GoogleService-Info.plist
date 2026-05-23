@@ -3,9 +3,11 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>117593786021-aff74v89rt837avv4vjei1bf31pcu9sb.apps.googleusercontent.com</string>
+	<string>117593786021-23i4r7jejnavbf36ran2t08hl3d3ksek.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.117593786021-aff74v89rt837avv4vjei1bf31pcu9sb</string>
+	<string>com.googleusercontent.apps.117593786021-23i4r7jejnavbf36ran2t08hl3d3ksek</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>117593786021-ql4t3kip66h0h53is69kq5egoh7bdqba.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
 	<string>AIzaSyBqZwqle71NBIlte7H7x3EQ0Ca4GKbgS4k</string>
 	<key>GCM_SENDER_ID</key>
@@ -13,7 +15,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.example.ngempingApp</string>
+	<string>com.outzy.app</string>
 	<key>PROJECT_ID</key>
 	<string>ngemping-app</string>
 	<key>STORAGE_BUCKET</key>
@@ -29,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:117593786021:ios:12260cb948ed18c32fef4c</string>
+	<string>1:117593786021:ios:bfdaaa8c33938d322fef4c</string>
 </dict>
 </plist>

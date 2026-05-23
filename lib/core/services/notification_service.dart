@@ -17,9 +17,9 @@ class NotificationService {
   final _messaging = FirebaseMessaging.instance;
   final _localNotifications = FlutterLocalNotificationsPlugin();
 
-  static const _channelId = 'ngemping_default';
-  static const _channelName = 'ngemping';
-  static const _channelDesc = 'Notifikasi umum ngemping';
+  static const _channelId = 'outzy_default';
+  static const _channelName = 'Outzy';
+  static const _channelDesc = 'Notifikasi umum Outzy';
 
   Future<void> init() async {
     // Register background handler

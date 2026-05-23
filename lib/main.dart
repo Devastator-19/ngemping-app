@@ -8,6 +8,7 @@ import 'features/auth/providers/auth_provider.dart';
 import 'features/community/providers/community_provider.dart';
 import 'features/event/providers/event_provider.dart';
 import 'features/home/providers/home_provider.dart';
+import 'features/notification/providers/notification_provider.dart';
 import 'features/onboarding/providers/onboarding_provider.dart';
 import 'features/splash/splash_screen.dart';
 import 'firebase_options.dart';
@@ -22,11 +23,11 @@ void main() async {
     DeviceOrientation. portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  runApp(const NngempingApp());
+  runApp(const OutzyApp());
 }
 
-class NngempingApp extends StatelessWidget {
-  const NngempingApp({super.key});
+class OutzyApp extends StatelessWidget {
+  const OutzyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -37,9 +38,10 @@ class NngempingApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CommunityProvider()),
         ChangeNotifierProvider(create: (_) => HomeProvider()),
         ChangeNotifierProvider(create: (_) => EventProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: MaterialApp(
-        title: 'ngemping',
+        title: 'Outzy',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         home: const SplashScreen(),

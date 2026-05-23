@@ -2,7 +2,7 @@ class AppStrings {
   AppStrings._();
 
   // App
-  static const String appName = 'ngemping';
+  static const String appName = 'Outzy';
   static const String appTagline = 'Jelajahi. Berkemah. Bersama.';
   static const String appVersion = 'v1.0.0';
 

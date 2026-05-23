@@ -1,4 +1,4 @@
-package com.example.ngemping_app
+package com.outzy.app
 
 import io.flutter.embedding.android.FlutterActivity
 

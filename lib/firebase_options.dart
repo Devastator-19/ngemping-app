@@ -64,6 +64,6 @@ class DefaultFirebaseOptions {
     projectId: 'ngemping-app',
     storageBucket: 'ngemping-app.firebasestorage.app',
     iosClientId: '117593786021-aff74v89rt837avv4vjei1bf31pcu9sb.apps.googleusercontent.com',
-    iosBundleId: 'com.example.ngempingApp',
+    iosBundleId: 'com.outzy.app',
   );
 }

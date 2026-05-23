@@ -39,10 +39,54 @@
               "client_type": 3
             },
             {
-              "client_id": "117593786021-aff74v89rt837avv4vjei1bf31pcu9sb.apps.googleusercontent.com",
+              "client_id": "117593786021-23i4r7jejnavbf36ran2t08hl3d3ksek.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.ngempingApp"
+                "bundle_id": "com.outzy.app"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:117593786021:android:b977c330ae2da7442fef4c",
+        "android_client_info": {
+          "package_name": "com.outzy.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "117593786021-lriqhg2vgqg1eap3ktifflvn832o8f6j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.outzy.app",
+            "certificate_hash": "bfd95b2dbe21f427c19e1b7c758240b2f1d7320a"
+          }
+        },
+        {
+          "client_id": "117593786021-0gnhec4l8h17i84cp6970i37hpu0kha9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCyhQ2lThfVWNmq1gk5fN9UuXd88nHpRR8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "117593786021-0gnhec4l8h17i84cp6970i37hpu0kha9.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "117593786021-23i4r7jejnavbf36ran2t08hl3d3ksek.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.outzy.app"
               }
             }
           ]

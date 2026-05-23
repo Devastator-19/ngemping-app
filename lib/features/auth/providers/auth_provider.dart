@@ -36,9 +36,6 @@ class AppAuthProvider extends ChangeNotifier {
   bool get hasPhone => linkedProviders.contains('phone');
 
   AppAuthProvider() {
-    if (kDebugMode) {
-      _auth.setSettings(appVerificationDisabledForTesting: true);
-    }
     _auth.authStateChanges().listen(_onAuthStateChanged);
   }
 

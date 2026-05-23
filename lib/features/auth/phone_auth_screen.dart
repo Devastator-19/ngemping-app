@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:sms_autofill/sms_autofill.dart';
 import '../../core/theme/app_colors.dart';
 import 'providers/auth_provider.dart';
 import 'widgets/auth_header.dart';
@@ -13,7 +14,7 @@ class PhoneAuthScreen extends StatefulWidget {
   State<PhoneAuthScreen> createState() => _PhoneAuthScreenState();
 }
 
-class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
+class _PhoneAuthScreenState extends State<PhoneAuthScreen> with CodeAutoFill {
   final _phoneController = TextEditingController(text: '+62 ');
   final _otpControllers = List.generate(6, (_) => TextEditingController());
   final _otpFocusNodes = List.generate(6, (_) => FocusNode());
@@ -22,7 +23,20 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   bool _showOtp = false;
 
   @override
+  void codeUpdated() {
+    final digits = code?.characters.toList() ?? [];
+    for (int i = 0; i < _otpControllers.length; i++) {
+      _otpControllers[i].text = i < digits.length ? digits[i] : '';
+    }
+    if ((code?.length ?? 0) == 6 && mounted) {
+      _verifyOtp(context);
+    }
+  }
+
+  @override
   void dispose() {
+    cancel();
+    SmsAutoFill().unregisterListener();
     _phoneController.dispose();
     for (final c in _otpControllers) { c.dispose(); }
     for (final f in _otpFocusNodes) { f.dispose(); }
@@ -52,6 +66,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
       onCodeSent: () {
         if (!mounted) return;
         setState(() => _showOtp = true);
+        listenForCode();
         Future.delayed(const Duration(milliseconds: 200), () {
           if (mounted) _otpFocusNodes[0].requestFocus();
         });

@@ -92,7 +92,7 @@ class MembershipCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'ngemping',
+                            'Outzy',
                             style: GoogleFonts.comfortaa(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,

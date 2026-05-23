@@ -6,6 +6,7 @@ import '../auth/providers/auth_provider.dart';
 import '../auth/login_screen.dart';
 import '../auth/phone_auth_screen.dart';
 import 'edit_profile_screen.dart';
+import 'my_cards_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -145,6 +146,13 @@ class _AuthenticatedView extends StatelessWidget {
                 _ProfileHeader(user: user),
                 const SizedBox(height: 24),
 
+                // Kartu Digital
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _DigitalCardBanner(),
+                ),
+                const SizedBox(height: 16),
+
                 // Linked accounts section
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -206,6 +214,69 @@ class _AuthenticatedView extends StatelessWidget {
                 Text('Keluar', style: GoogleFonts.nunito(color: AppColors.white)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Digital card banner
+// ---------------------------------------------------------------------------
+
+class _DigitalCardBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const MyCardsScreen()),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [AppColors.primary, AppColors.primaryDark],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.credit_card_rounded, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Kartu Digital Anggota',
+                    style: GoogleFonts.nunito(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    'Lihat kartu keanggotaan komunitasmu',
+                    style: GoogleFonts.nunito(
+                      fontSize: 12,
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Colors.white),
+          ],
+        ),
       ),
     );
   }
