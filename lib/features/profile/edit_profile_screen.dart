@@ -223,10 +223,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
               _buildField(
                 controller: _phoneCtrl,
-                label: 'No. HP / WA',
+                label: 'No. HP / WA (Info Kontak)',
                 hint: 'Contoh: 08123456789',
                 icon: Icons.phone_outlined,
                 keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: Text(
+                  'Untuk menggunakan nomor HP sebagai metode login, gunakan menu "Metode Login Terhubung" di halaman profil.',
+                  style: GoogleFonts.nunito(
+                    fontSize: 11,
+                    color: AppColors.textLight,
+                    height: 1.4,
+                  ),
+                ),
               ),
               const SizedBox(height: 14),
 

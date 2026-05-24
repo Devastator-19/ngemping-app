@@ -28,9 +28,6 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> with CodeAutoFill {
     for (int i = 0; i < _otpControllers.length; i++) {
       _otpControllers[i].text = i < digits.length ? digits[i] : '';
     }
-    if ((code?.length ?? 0) == 6 && mounted) {
-      _verifyOtp(context);
-    }
   }
 
   @override

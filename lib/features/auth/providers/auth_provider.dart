@@ -261,28 +261,23 @@ class AppAuthProvider extends ChangeNotifier {
       phoneNumber: phoneNumber,
       timeout: const Duration(seconds: 60),
       verificationCompleted: (credential) async {
-        // Auto-verify Android — link atau sign in
-        try {
-          final currentUser = _auth.currentUser;
-          if (currentUser != null && !hasPhone) {
-            await currentUser.linkWithCredential(credential);
-          } else {
-            await _auth.signInWithCredential(credential);
-          }
-        } catch (_) {}
+        debugPrint('[OTP] verificationCompleted fired — ignored, user will verify manually');
       },
       verificationFailed: (e) {
+        debugPrint('[OTP] verificationFailed: ${e.code} — ${e.message}');
         _phoneStep = PhoneAuthStep.idle;
         _setError(_mapFirebaseError(e.code));
         onError(_error ?? 'Verifikasi gagal.');
       },
       codeSent: (verificationId, resendToken) {
+        debugPrint('[OTP] codeSent: verificationId=$verificationId');
         _verificationId = verificationId;
         _phoneStep = PhoneAuthStep.otpSent;
         notifyListeners();
         onCodeSent();
       },
       codeAutoRetrievalTimeout: (verificationId) {
+        debugPrint('[OTP] codeAutoRetrievalTimeout fired');
         _verificationId = verificationId;
       },
     );
@@ -294,7 +289,10 @@ class AppAuthProvider extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   Future<bool> verifyOtp(String otp) async {
+    debugPrint('[OTP] verifyOtp called, otp=$otp, verificationId=$_verificationId, currentUser=${_auth.currentUser?.uid}');
     if (_verificationId == null) {
+      // Sudah login via verificationCompleted (Android auto-verify)
+      if (_auth.currentUser != null) return true;
       _setError('Sesi habis. Minta OTP lagi.');
       return false;
     }
