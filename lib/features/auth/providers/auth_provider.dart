@@ -225,6 +225,8 @@ class AppAuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> refreshProfile() => _fetchBackendProfile();
+
   void resetPhoneStep() {
     _phoneStep = PhoneAuthStep.idle;
     _setError(null);

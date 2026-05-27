@@ -1,5 +1,7 @@
+import 'package:dio/dio.dart' as dio_pkg;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
@@ -26,6 +28,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _selectedGender;
   String? _selectedProvinsi;
   String? _selectedDistrict;
+  bool _uploadingPhoto = false;
 
   List<Map<String, String>> _provinces = [];
   List<Map<String, String>> _regencies = [];
@@ -103,6 +106,41 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ),
     );
     if (picked != null) setState(() => _dateOfBirth = picked);
+  }
+
+  Future<void> _pickAndUploadPhoto() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80, maxWidth: 800);
+    if (picked == null || !mounted) return;
+
+    setState(() => _uploadingPhoto = true);
+    try {
+      final formData = dio_pkg.FormData.fromMap({
+        'file': await dio_pkg.MultipartFile.fromFile(picked.path, filename: 'avatar.jpg'),
+      });
+      await ApiClient.instance.post('/upload/avatar', data: formData);
+      if (!mounted) return;
+      await context.read<AppAuthProvider>().refreshProfile();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Foto profil diperbarui', style: GoogleFonts.nunito()),
+        backgroundColor: AppColors.primaryDark,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Gagal upload foto', style: GoogleFonts.nunito()),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ));
+    } finally {
+      if (mounted) setState(() => _uploadingPhoto = false);
+    }
   }
 
   Future<void> _save() async {
@@ -202,6 +240,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _AvatarPicker(
+                photoUrl: context.watch<AppAuthProvider>().user?.photoURL,
+                isUploading: _uploadingPhoto,
+                onTap: _pickAndUploadPhoto,
+              ),
+              const SizedBox(height: 24),
               _SectionLabel(label: 'Informasi Dasar'),
               const SizedBox(height: 12),
 
@@ -622,6 +666,75 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           }).toList(),
         ),
       ],
+    );
+  }
+}
+
+class _AvatarPicker extends StatelessWidget {
+  final String? photoUrl;
+  final bool isUploading;
+  final VoidCallback onTap;
+  const _AvatarPicker({required this.photoUrl, required this.isUploading, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: GestureDetector(
+        onTap: isUploading ? null : onTap,
+        child: Stack(
+          children: [
+            Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.primaryPastel, width: 2.5),
+              ),
+              child: ClipOval(
+                child: isUploading
+                    ? Container(
+                        color: AppColors.primarySurface,
+                        child: const Center(
+                          child: SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.primary),
+                          ),
+                        ),
+                      )
+                    : photoUrl != null
+                        ? Image.network(photoUrl!, fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _InitialsFallback())
+                        : _InitialsFallback(),
+              ),
+            ),
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: const Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InitialsFallback extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.primarySurface,
+      child: const Icon(Icons.person_rounded, size: 44, color: AppColors.primaryLight),
     );
   }
 }
