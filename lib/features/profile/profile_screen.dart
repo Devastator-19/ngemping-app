@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../auth/providers/auth_provider.dart';
 import '../auth/login_screen.dart';
-import '../auth/phone_auth_screen.dart';
 import 'edit_profile_screen.dart';
 import 'my_cards_screen.dart';
 
@@ -396,243 +395,61 @@ class _LinkedAccountsCard extends StatelessWidget {
         border: Border.all(color: AppColors.divider),
       ),
       padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              const Icon(Icons.link_rounded,
-                  color: AppColors.primary, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Metode Login Terhubung',
-                style: GoogleFonts.comfortaa(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textDark,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Kamu bisa login menggunakan metode di bawah ini.',
-            style: GoogleFonts.nunito(
-              fontSize: 12,
-              color: AppColors.textLight,
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.primarySurface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.primaryPastel),
+            ),
+            child: const Center(
+              child: Icon(Icons.phone_iphone_rounded,
+                  color: AppColors.primary, size: 22),
             ),
           ),
-          const SizedBox(height: 16),
-
-          // Google row
-          _ProviderRow(
-            icon: _GoogleIcon(),
-            label: 'Google',
-            subtitle: auth.hasGoogle
-                ? (auth.user?.email ?? 'Terhubung')
-                : 'Belum terhubung',
-            isLinked: auth.hasGoogle,
-            isLoading: auth.isLoading,
-            onToggle: () {
-              if (auth.hasGoogle) {
-                _confirmUnlink(context, 'Google', 'google.com');
-              } else {
-                _linkGoogle(context);
-              }
-            },
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Nomor HP',
+                  style: GoogleFonts.nunito(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                Text(
+                  auth.user?.phoneNumber ?? '-',
+                  style: GoogleFonts.nunito(
+                    fontSize: 12,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
           ),
-          const Divider(height: 24, color: AppColors.divider),
-
-          // Phone row
-          _ProviderRow(
-            icon: const Icon(Icons.phone_rounded,
-                color: AppColors.primary, size: 22),
-            label: 'Nomor HP',
-            subtitle: auth.hasPhone
-                ? (auth.user?.phoneNumber ?? 'Terhubung')
-                : 'Belum terhubung',
-            isLinked: auth.hasPhone,
-            isLoading: auth.isLoading,
-            onToggle: () {
-              if (auth.hasPhone) {
-                _confirmUnlink(context, 'Nomor HP', 'phone');
-              } else {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const PhoneAuthScreen()),
-                );
-              }
-            },
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppColors.primarySurface,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              'Aktif',
+              style: GoogleFonts.nunito(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
+            ),
           ),
         ],
       ),
-    );
-  }
-
-  void _linkGoogle(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final success = await context.read<AppAuthProvider>().signInWithGoogle();
-    if (!context.mounted) return;
-    if (success) {
-      messenger.showSnackBar(_snack('Google berhasil dihubungkan!', true));
-    } else {
-      final err = context.read<AppAuthProvider>().error;
-      if (err != null) messenger.showSnackBar(_snack(err, false));
-    }
-  }
-
-  void _confirmUnlink(BuildContext context, String name, String providerId) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Putuskan $name?',
-            style: GoogleFonts.comfortaa(fontWeight: FontWeight.bold)),
-        content: Text(
-          'Setelah diputus, kamu tidak bisa login menggunakan $name lagi kecuali menghubungkan ulang.',
-          style: GoogleFonts.nunito(
-              fontSize: 13, color: AppColors.textMedium, height: 1.5),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('Batal',
-                style: GoogleFonts.nunito(color: AppColors.textLight)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              final messenger = ScaffoldMessenger.of(context);
-              final success = await context
-                  .read<AppAuthProvider>()
-                  .unlinkProvider(providerId);
-              if (!context.mounted) return;
-              messenger.showSnackBar(success
-                  ? _snack('$name berhasil diputus.', true)
-                  : _snack(
-                      context.read<AppAuthProvider>().error ?? 'Gagal.', false));
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-            child: Text('Putuskan',
-                style: GoogleFonts.nunito(color: AppColors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  SnackBar _snack(String msg, bool success) {
-    return SnackBar(
-      content: Text(msg, style: GoogleFonts.nunito()),
-      backgroundColor:
-          success ? AppColors.primaryDark : AppColors.error,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.all(16),
-    );
-  }
-}
-
-class _ProviderRow extends StatelessWidget {
-  final Widget icon;
-  final String label;
-  final String subtitle;
-  final bool isLinked;
-  final bool isLoading;
-  final VoidCallback onToggle;
-
-  const _ProviderRow({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-    required this.isLinked,
-    required this.isLoading,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        // Provider icon
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: isLinked ? AppColors.primarySurface : AppColors.surfaceVariant,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isLinked ? AppColors.primaryPastel : AppColors.border,
-            ),
-          ),
-          child: Center(child: icon),
-        ),
-        const SizedBox(width: 14),
-
-        // Label + subtitle
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.nunito(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textDark,
-                ),
-              ),
-              Text(
-                subtitle,
-                style: GoogleFonts.nunito(
-                  fontSize: 12,
-                  color: isLinked ? AppColors.primary : AppColors.textLight,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-
-        // Toggle button
-        const SizedBox(width: 8),
-        isLoading
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: AppColors.primary),
-              )
-            : GestureDetector(
-                onTap: onToggle,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isLinked
-                        ? AppColors.error.withValues(alpha: 0.08)
-                        : AppColors.primarySurface,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isLinked
-                          ? AppColors.error.withValues(alpha: 0.3)
-                          : AppColors.primaryPastel,
-                    ),
-                  ),
-                  child: Text(
-                    isLinked ? 'Putuskan' : 'Hubungkan',
-                    style: GoogleFonts.nunito(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: isLinked ? AppColors.error : AppColors.primary,
-                    ),
-                  ),
-                ),
-              ),
-      ],
     );
   }
 }
@@ -1009,60 +826,3 @@ class _PendingDeletion extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Google "G" icon (reuse dari auth_social_button)
-// ---------------------------------------------------------------------------
-
-class _GoogleIcon extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 22,
-      height: 22,
-      child: CustomPaint(painter: _GoogleGPainter()),
-    );
-  }
-}
-
-class _GoogleGPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final r = size.width / 2;
-    final strokeW = size.width * 0.13;
-    final colors = [
-      const Color(0xFF4285F4),
-      const Color(0xFFEA4335),
-      const Color(0xFFFBBC05),
-      const Color(0xFF34A853),
-    ];
-    final startAngles = [-0.35, 0.65 * 3.14159, 3.14159, 1.65 * 3.14159];
-    final sweepAngles = [
-      1.1 * 3.14159,
-      0.52 * 3.14159,
-      0.52 * 3.14159,
-      0.52 * 3.14159,
-    ];
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeW
-      ..strokeCap = StrokeCap.round;
-    final rect =
-        Rect.fromCircle(center: Offset(cx, cy), radius: r - strokeW / 2);
-    for (int i = 0; i < 4; i++) {
-      paint.color = colors[i];
-      canvas.drawArc(rect, startAngles[i], sweepAngles[i], false, paint);
-    }
-    final barPaint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = strokeW
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(cx, cy), Offset(cx + r - strokeW / 2, cy), barPaint);
-    paint.color = const Color(0xFF4285F4);
-    canvas.drawArc(rect, -0.05, 0.05, false, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}

@@ -1,48 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
-import 'providers/auth_provider.dart';
 import 'register_screen.dart';
 import 'phone_auth_screen.dart';
 import 'widgets/auth_header.dart';
-import 'widgets/auth_social_button.dart';
-import 'widgets/auth_divider.dart';
 import 'widgets/auth_footer_link.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
 
-  Future<void> _signInWithGoogle(BuildContext context) async {
-    final provider = context.read<AppAuthProvider>();
-    final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
-
-    final success = await provider.signInWithGoogle();
-    if (!context.mounted) return;
-
-    if (success) {
-      navigator.popUntil((route) => route.isFirst);
-    } else if (provider.error != null) {
-      messenger.showSnackBar(SnackBar(
-        content: Text(provider.error!, style: GoogleFonts.nunito()),
-        backgroundColor: AppColors.primaryDark,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-      ));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final isLoading = context.watch<AppAuthProvider>().isLoading;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          AuthHeader(
+          const AuthHeader(
             title: 'Selamat\nDatang Kembali!',
             subtitle: 'Masuk dan lanjutkan petualanganmu bersama komunitas.',
           ),
@@ -53,30 +26,26 @@ class LoginScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Google button
-                  AuthSocialButton.google(
-                    onTap: isLoading ? () {} : () => _signInWithGoogle(context),
-                    label: 'Masuk dengan Google',
-                    isLoading: isLoading,
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Phone button
-                  AuthSocialButton.phone(
-                    onTap: isLoading
-                        ? () {}
-                        : () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                  builder: (_) => const PhoneAuthScreen()),
-                            ),
-                    label: 'Masuk dengan Nomor HP',
-                  ),
-
-                  const SizedBox(height: 28),
-                  const AuthDivider(),
-                  const SizedBox(height: 28),
-
                   _InfoBox(),
+                  const SizedBox(height: 28),
+
+                  SizedBox(
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const PhoneAuthScreen()),
+                      ),
+                      icon: const Icon(Icons.phone_iphone_rounded, size: 20),
+                      label: Text(
+                        'Masuk dengan Nomor HP',
+                        style: GoogleFonts.nunito(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
 
                   const SizedBox(height: 36),
 
@@ -118,7 +87,7 @@ class _InfoBox extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Masuk menggunakan akun Google atau nomor HP yang sudah terdaftar.',
+              'Masuk menggunakan nomor HP yang sudah terdaftar.',
               style: GoogleFonts.nunito(
                   fontSize: 13, color: AppColors.primary, height: 1.5),
             ),

@@ -1,38 +1,30 @@
-import 'dart:io';
-
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_client.dart';
 
-/// Background message handler — harus top-level function
 @pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // Firebase sudah diinit di main.dart sebelum handler ini dipanggil
+Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
+  // Background message handler — Flutter requirement
 }
 
 class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
 
-  final _messaging = FirebaseMessaging.instance;
   final _localNotifications = FlutterLocalNotificationsPlugin();
+  final _messaging = FirebaseMessaging.instance;
 
   static const _channelId = 'outzy_default';
   static const _channelName = 'Outzy';
   static const _channelDesc = 'Notifikasi umum Outzy';
 
   Future<void> init() async {
-    // Register background handler
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-    // Setup local notifications untuk foreground
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings();
     await _localNotifications.initialize(
       const InitializationSettings(android: androidSettings, iOS: iosSettings),
     );
 
-    // Buat notification channel Android
     await _localNotifications
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
@@ -45,21 +37,31 @@ class NotificationService {
           ),
         );
 
-    // Minta permission
-    await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
 
-    // Tampilkan notifikasi saat app foreground
-    FirebaseMessaging.onMessage.listen(_onForegroundMessage);
+    // Tampilkan notifikasi lokal saat app foreground
+    FirebaseMessaging.onMessage.listen(_showLocalNotification);
   }
 
-  void _onForegroundMessage(RemoteMessage message) {
+  Future<void> registerToken() async {
+    await _messaging.requestPermission(alert: true, badge: true, sound: true);
+
+    final token = await _messaging.getToken();
+    if (token != null) {
+      await ApiClient.instance.patch('/users/me/fcm-token', data: {'fcmToken': token});
+    }
+
+    // Refresh token jika FCM memperbarui
+    _messaging.onTokenRefresh.listen((newToken) {
+      ApiClient.instance.patch('/users/me/fcm-token', data: {'fcmToken': newToken});
+    });
+  }
+
+  Future<void> _showLocalNotification(RemoteMessage message) async {
     final notification = message.notification;
     if (notification == null) return;
-    _localNotifications.show(
+
+    await _localNotifications.show(
       notification.hashCode,
       notification.title,
       notification.body,
@@ -70,32 +72,9 @@ class NotificationService {
           channelDescription: _channelDesc,
           importance: Importance.high,
           priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
         ),
         iOS: const DarwinNotificationDetails(),
       ),
     );
-  }
-
-  /// Ambil FCM token dan kirim ke backend
-  Future<void> registerToken() async {
-    try {
-      // iOS: tunggu APNS token siap sebelum minta FCM token
-      if (Platform.isIOS) {
-        final apnsToken = await _messaging.getAPNSToken();
-        if (apnsToken == null) return;
-      }
-
-      final token = await _messaging.getToken();
-      if (token == null) return;
-      await ApiClient.instance.patch('/users/me/fcm-token', data: {'fcmToken': token});
-
-      // Update token jika berubah
-      _messaging.onTokenRefresh.listen((newToken) async {
-        try {
-          await ApiClient.instance.patch('/users/me/fcm-token', data: {'fcmToken': newToken});
-        } catch (_) {}
-      });
-    } catch (_) {}
   }
 }

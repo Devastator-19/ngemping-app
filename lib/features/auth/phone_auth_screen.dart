@@ -85,7 +85,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> with CodeAutoFill {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
-    final success = await provider.verifyOtp(otp);
+    final success = await provider.verifyOtp(_rawPhone, otp);
     if (!mounted) return;
 
     if (success) {

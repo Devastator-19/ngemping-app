@@ -1,5 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
-
 class UserModel {
   final String uid;
   final String? displayName;
@@ -30,39 +28,6 @@ class UserModel {
     this.placeOfBirth,
     this.dateOfBirth,
   });
-
-  factory UserModel.fromFirebaseUser(User user) {
-    return UserModel(
-      uid: user.uid,
-      displayName: user.displayName,
-      email: user.email,
-      photoURL: user.photoURL,
-      phoneNumber: user.phoneNumber,
-      createdAt: user.metadata.creationTime,
-    );
-  }
-
-  factory UserModel.fromJson(Map<String, dynamic> json, {required String uid}) {
-    return UserModel(
-      uid: uid,
-      displayName: json['displayName'] as String?,
-      email: json['email'] as String?,
-      photoURL: json['photoURL'] as String?,
-      phoneNumber: json['phoneNumber'] as String?,
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'] as String)
-          : null,
-      alamat: json['alamat'] as String?,
-      gender: json['gender'] as String?,
-      provinsi: json['provinsi'] as String?,
-      district: json['district'] as String?,
-      nickName: json['nickName'] as String?,
-      placeOfBirth: json['placeOfBirth'] as String?,
-      dateOfBirth: json['dateOfBirth'] != null
-          ? DateTime.tryParse(json['dateOfBirth'] as String)
-          : null,
-    );
-  }
 
   UserModel copyWith({
     String? displayName,
@@ -95,9 +60,8 @@ class UserModel {
     );
   }
 
-  /// Member ID formatted: JAI-2026-XXXX (4 chars from uid)
   String get memberId {
-    final shortUid = uid.substring(0, 4).toUpperCase();
+    final shortUid = uid.length >= 4 ? uid.substring(0, 4).toUpperCase() : uid.toUpperCase();
     final year = (createdAt ?? DateTime.now()).year;
     return 'JAI-$year-$shortUid';
   }
